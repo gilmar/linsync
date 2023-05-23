@@ -12,7 +12,7 @@ function computeSyncResults(varargin)
 % - Option 1 -- (a filename string or object)
 %   - parameters - an object containing the expected properties (as outlined below), or a string
 %     describing the filename to run load this object in
-% - Option 2 -- (all supplied individually)
+% - Option 2 -- DEPRECTATED -- (all supplied individually)
 %   - definitions of individual variables are as specified in the parametersTemplate.m script.
 %     We require the following to be defined in order:
 %     N, b, c, undirected, discretized, repeats, networkType, p, d, S, maxMotifLength, folder
@@ -35,17 +35,7 @@ I = eye(N);
 G = ones(N)./N;
 U = I - G;
 
-% Generate string for the boolean arguments ready for file names
-if (undirected)
-    undirString = 'un';
-else
-    undirString = 'dir';
-end
-if (discretized)
-    discString = 'disc';
-else
-    discString = 'cont';
-end
+originalParameters = parameters; % Store for later
 
 varyingP = false;
 if (length(p) > 1)
@@ -79,9 +69,10 @@ for paramIndex = 1 : indices
     fprintf('Param index %d:\n===============\n\n', paramIndex);
 
     if (varyingP)
-        p = paramsToRunThrough(paramIndex);
+        parameters.p = paramsToRunThrough(paramIndex);
     else
         c = paramsToRunThrough(paramIndex);
+        parameters.c = paramsToRunThrough(paramIndex);
     end
 
     % Now run experiments for each sample network for this parameter
@@ -91,17 +82,14 @@ for paramIndex = 1 : indices
         while (err == 2)
             % Generate a new unweighted adjacency matrix A representing the network:
             fprintf('Generating matrix %d\n', r);
-            % Don't allow self-connections for any of the A, we'll add
-            % those in separately
-            if (strcmp(networkType, 'rand'))
-                A = generateNewRandomMatrix(N, p, false, undirected, true);
-            elseif (strcmp(networkType, 'randFixedD'))
-                A = generateNewRandomFixedDMatrix(N, p, false, undirected, true);
-            elseif (strcmp(networkType, 'randRing'))
-                A = generateNewRandomRingMatrix(N, d, p, false, undirected, false, true);
-            else
-                error('networkType \"%s\" not recognised\n', networkType);
-            end
+
+            % Generate an unweighted network structure, without self-connections,
+            %  which we ensure is not *undirectionally* connected:
+            % (hard coding these instead of allowing user to set them)
+            parameters.allowSelf = false;
+            parameters.ensureConnected = true;
+            parameters.randRing.includeSelf = false;
+            A = feval(parameters.generateNetworkFunction, parameters);
 
             % Generate the weighted update matrix C from A (in row-vector form following Barnett).
             % Compute the in-degrees for each node (take a column sum)
@@ -179,22 +167,20 @@ for paramIndex = 1 : indices
         mean(diagonalizable(paramIndex, :)));
 end                
 
+parameters = originalParameters; % Restore the original parameters
+
 %% Save the processed results here:
-if (strcmp(networkType, 'randRing'))
-    dString = sprintf('-d%d', d);
-else
-    dString = '';
-end
+[networkType, netTypeSuffix] = generateNetworkTypeStrings(parameters);
 if (varyingP)
     % Put full range of p back into the variable p
     p = paramsToRunThrough;
     fileNamePrefix = sprintf('%s/N%d-%s%s-b%.2f-c%.2f-%s-k%d-%s-S%d-repeats%d', ...
-                folder, N, networkType, dString, b, c, undirString, maxMotifLength, discString, S, repeats);
+                folder, N, networkType, netTypeSuffix, b, c, undirString, maxMotifLength, discString, S, repeats);
 else
     % Put full range of c back into the variable c
     c = paramsToRunThrough;
     fileNamePrefix = sprintf('%s/N%d-%s%s-b%.2f-p%.4f-%s-k%d-%s-S%d-repeats%d', ...
-                folder, N, networkType, dString, b, p, undirString, maxMotifLength, discString, S, repeats);
+                folder, N, networkType, netTypeSuffix, b, p, undirString, maxMotifLength, discString, S, repeats);
 end
 % Convert booleans to integers so Matlab can save them
 if (discretized)
@@ -216,7 +202,8 @@ end
 save([fileNamePrefix, '.mat'], '-mat', 'N', 'd', 'b', 'c', 'p', 'undirected', 'maxMotifLength', 'discretized', ...
     'networkType', 'paramsToRunThrough', 'S', 'repeats', ...
     'syncWidths', 'syncWidthApproxes', 'syncWidthEmpirical', ...
-    'dominantEigenvalues', 'secondEigenvalues', 'diagonalizable');
+    'dominantEigenvalues', 'secondEigenvalues', 'diagonalizable', ...
+    'parameters'); % This is the important one, the other inputs are legacy
 toc
 
 end

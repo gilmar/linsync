@@ -1,20 +1,26 @@
-function A = generateNewRandomRingMatrix(N, d, gamma, includeSelf, undirected, allowSelf, ensureConnected)
-%% Generate a new ring network, which is rewired subject to a given probability
+function A = generateNewRandomRingMatrix(varargin)
+%%function A = generateNewRandomRingMatrix(N, d, gamma, includeSelf, undirected, allowSelf, ensureConnected)
+%function A = generateNewRandomRingMatrix(parameters)
 %
-% Inputs
-% - N - network size
-% - d - in-degree
-% - gamma - probability of rewiring each link after the regular network is constructed
-% - includeSelf - whether to include self-connections in the regular
-%    network (included in degree d)
-% - undirected - whether to make the matrix directed or not.
-%   For directed graphs, we rewire the sources, to keep a fixed in-degree
-%   For undirected graphs, we don't allow connection to an odd number of
-%   other nodes (too unconstrained to work out who to connect to)
-% - allowSelf - whether to allow rewired connected to be made to oneself.
-% - ensureConnected - only return an at least weakly-connected matrix.
-%     If this is set to true, then p must be >= 2/N(N-1) for undirected, 1/N(N-1) for directed, for the matrix to be connected.
-%     Note: if allowSelf==true, then (N-1) -> N here.
+% Generate a new ring network, which is rewired subject to a given probability
+%
+% Parameters can be supplied in one of two ways:
+% - Option 1 --
+%   - parameters - an object containing the expected properties (as outlined for option 2)
+% - Option 2 -- all arguments supplied as follows:
+%   - N - network size
+%   - d - in-degree
+%   - gamma - probability of rewiring each link after the regular network is constructed
+%   - includeSelf - whether to include self-connections in the regular
+%     network (included in degree d)
+%   - undirected - whether to make the matrix directed or not.
+%     For directed graphs, we rewire the sources, to keep a fixed in-degree
+%     For undirected graphs, we don't allow connection to an odd number of
+%     other nodes (too unconstrained to work out who to connect to)
+%   - allowSelf - whether to allow rewired connected to be made to oneself.
+%   - ensureConnected - only return an at least weakly-connected matrix.
+%       If this is set to true, then p must be >= 2/N(N-1) for undirected, 1/N(N-1) for directed, for the matrix to be connected.
+%       Note: if allowSelf==true, then (N-1) -> N here.
 %
 % Outputs
 % - A - connectivity matrix (can be directed; A(i,j) means a link exists from i->j)
@@ -22,6 +28,19 @@ function A = generateNewRandomRingMatrix(N, d, gamma, includeSelf, undirected, a
 %% Linear Sync Toolkit (linsync)
 % Copyright (C) 2023 Joseph T. Lizier
 % Distributed under GNU General Public License v3
+
+if (length(varargin) == 1)
+    % User has provided a parameters object directly or a string specifying
+    % the filename to load a parameters object in.
+    parameters = varargin{1};
+    N = parameters.N;
+    d = parameters.d;
+    gamma = parameters.p; % Probability of re-wiring here
+    includeSelf = parameters.randRing.includeSelf;
+    undirected = parameters.undirected;
+    allowSelf = parameters.allowSelf;
+    ensureConnected = parameters.ensureConnected;
+end
 
 fprintf('Running\n');
 if (includeSelf)

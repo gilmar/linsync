@@ -65,11 +65,7 @@ if (size(paramsToRunThrough, 2) > size(paramsToRunThrough,1)) % More columns tha
 end
 
 % Load the processed results here:
-if (strcmp(networkType, 'randRing'))
-    dString = sprintf('-d%d', d);
-else
-    dString = '';
-end
+[networkType, netTypeSuffix] = generateNetworkTypeStrings(parameters);
 
 % Now plot the errors of the empirical values for some fixed p value:
 
@@ -85,11 +81,11 @@ for sIndex = 1:length(SRangeToPlot)
     if (varyingP)
         % Put full range of p back into the variable p
         fileNamePrefix = sprintf('%s/N%d-%s%s-b%.2f-c%.2f-%s-k%d-%s-S%d-repeats%d', ...
-                    folder, N, networkType, dString, b, c, undirString, maxMotifLength, discString, s, repeats);
+                    folder, N, networkType, netTypeSuffix, b, c, undirString, maxMotifLength, discString, s, repeats);
     else
         % Put full range of c back into the variable c
         fileNamePrefix = sprintf('%s/N%d-%s%s-b%.2f-p%.4f-%s-k%d-%s-S%d-repeats%d', ...
-                    folder, N, networkType, dString, b, p, undirString, maxMotifLength, discString, s, repeats);
+                    folder, N, networkType, netTypeSuffix, b, p, undirString, maxMotifLength, discString, s, repeats);
     end
     load([fileNamePrefix, '.mat'], '-mat', 'N', 'd', 'b', 'c', 'p', 'undirected', 'maxMotifLength', 'discretized', ...
         'networkType', 'paramsToRunThrough', 'repeats', ... % 'S', 'repeats', ...

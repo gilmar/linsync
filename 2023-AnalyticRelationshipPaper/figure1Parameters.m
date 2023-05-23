@@ -54,11 +54,18 @@ parameters.discretized = false;
 %   quickly.
 parameters.repeats = 2000;
 
+% DEPRECATED - instead use generateNetworkFunction
 % - networkType. Options are:
 %   - 'rand' - random network
 %   - 'randFixedD' - random network with fixed in-degree
 %   - 'randRing' - a ring network with randomly rewired edges (Watts-Strogatz model).
-parameters.networkType = 'randRing';
+% parameters.networkType = 'randRing';
+
+% - generateNetworkFunction. Function to generate the network structure. Options are:
+%   - 'generateNewRandomMatrix' - random network
+%   - 'generateNewRandomFixedDMatrix' - random network with fixed in-degree
+%   - 'generateNewRandomRingMatrix' - a ring network with randomly rewired edges (Watts-Strogatz model).
+parameters.generateNetworkFunction = 'generateNewRandomRingMatrix';
 
 % Next 2 arguments that follow depend on which network type was requested:
 

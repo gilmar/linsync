@@ -1,12 +1,18 @@
-function A = generateNewRandomFixedDMatrix(N, p, allowSelf, undirected, ensureConnected)
-%% Generate a new random matrix with a fixed indegree for each node
+function A = generateNewRandomFixedDMatrix(varargin)
+%%function A = generateNewRandomFixedDMatrix(N, p, allowSelf, undirected, ensureConnected)
+%function A = generateNewRandomFixedDMatrix(parameters)
 %
-% Inputs
-% - N - network size
-% - p - connection probability 
-% - allowSelf - whether to allow self-connections
-% - undirected - whether to make the matrix directed or not
-% - ensureConnected - only return a connected matrix.
+% Generate a new random matrix with a fixed indegree for each node
+%
+% Parameters can be supplied in one of two ways:
+% - Option 1 --
+%   - parameters - an object containing the expected properties (as outlined for option 2)
+% - Option 2 -- all arguments supplied as follows:
+%   - N - network size
+%   - p - connection probability 
+%   - allowSelf - whether to allow self-connections
+%   - undirected - whether to make the matrix directed or not
+%   - ensureConnected - only return a connected matrix.
 %     If this is set to true, then p must be >= 2/N(N-1) for undirected, 1/N(N-1) for directed, for the matrix to be connected.
 %     Note: if allowSelf==true, then (N-1) -> N here.
 %
@@ -16,6 +22,17 @@ function A = generateNewRandomFixedDMatrix(N, p, allowSelf, undirected, ensureCo
 %% Linear Sync Toolkit (linsync)
 % Copyright (C) 2023 Joseph T. Lizier
 % Distributed under GNU General Public License v3
+
+if (length(varargin) == 1)
+    % User has provided a parameters object directly or a string specifying
+    % the filename to load a parameters object in.
+    parameters = varargin{1};
+    N = parameters.N;
+    p = parameters.p;
+    allowSelf = parameters.allowSelf;
+    undirected = parameters.undirected;
+    ensureConnected = parameters.ensureConnected;
+end
 
 if (allowSelf)
     numPossibleDirectedConnections = N * N;

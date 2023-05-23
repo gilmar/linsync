@@ -57,21 +57,17 @@ if (size(paramsToRunThrough, 2) > size(paramsToRunThrough,1)) % More columns tha
 end
 
 % Load the processed results here:
-if (strcmp(networkType, 'randRing'))
-    dString = sprintf('-d%d', d);
-else
-    dString = '';
-end
+[networkType, netTypeSuffix] = generateNetworkTypeStrings(parameters);
 if (varyingP)
     % Put full range of p back into the variable p
     p = paramsToRunThrough;
     fileNamePrefix = sprintf('%s/N%d-%s%s-b%.2f-c%.2f-%s-k%d-%s-S%d-repeats%d', ...
-                folder, N, networkType, dString, b, c, undirString, maxMotifLength, discString, S, repeats);
+                folder, N, networkType, netTypeSuffix, b, c, undirString, maxMotifLength, discString, S, repeats);
 else
     % Put full range of c back into the variable c
     c = paramsToRunThrough;
     fileNamePrefix = sprintf('%s/N%d-%s%s-b%.2f-p%.4f-%s-k%d-%s-S%d-repeats%d', ...
-                folder, N, networkType, dString, b, p, undirString, maxMotifLength, discString, S, repeats);
+                folder, N, networkType, netTypeSuffix, b, p, undirString, maxMotifLength, discString, S, repeats);
 end
 try
     load([fileNamePrefix, '.mat'], '-mat', 'N', 'd', 'b', 'c', 'p', 'undirected', 'maxMotifLength', 'discretized', ...

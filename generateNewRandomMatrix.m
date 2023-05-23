@@ -1,16 +1,21 @@
-function A = generateNewRandomMatrix(N, p, allowSelf, undirected, ensureConnected, ensureALinkForEachNode)
-%% 
+function A = generateNewRandomMatrix(varargin)
+%%function A = generateNewRandomMatrix(N, p, allowSelf, undirected, ensureConnected, ensureALinkForEachNode)
+%function A = generateNewRandomMatrix(parameters)
+% 
 % Generate a new Erdos-Renyi random matrix
 %
-% Inputs
-% - N - network size
-% - p - connection probability 
-% - allowSelf - whether to allow self-connections
-% - undirected - whether to make the matrix directed or not
-% - ensureConnected - only return a connected matrix.
+% Parameters can be supplied in one of two ways:
+% - Option 1 --
+%   - parameters - an object containing the expected properties (as outlined for option 2)
+% - Option 2 -- all arguments supplied as follows:
+%   - N - network size
+%   - p - connection probability 
+%   - allowSelf - whether to allow self-connections
+%   - undirected - whether to make the matrix directed or not
+%   - ensureConnected - only return a connected matrix.
 %     If this is set to true, then p must be >= 2/N(N-1) for undirected, 1/N(N-1) for directed, for the matrix to be connected.
 %     Note: if allowSelf==true, then (N-1) -> N here.
-% - ensureALinkForEachNode - whether to make sure that each node connects to at least one other.
+%   - ensureALinkForEachNode - whether to make sure that each node connects to at least one other.
 %     The supplied value here is ignored if ensureConnected is set to true and an undirected graph is requested.
 %     The supplied value is ignored if a directed graph is requested (because I haven't thought about whether 
 %      we would want it to mean all have connections in, out or bidirectional).
@@ -19,6 +24,7 @@ function A = generateNewRandomMatrix(N, p, allowSelf, undirected, ensureConnecte
 %      then once all nodes are in adding enough extra links to get p right - I think the earlier nodes will have
 %      more links - this paper describes a similar process that gave different structures to truly random graphs:
 %      http://math.uchicago.edu/~shmuel/Network-course-readings/CHKNS.pdf
+%     Optional - defaults to false
 %
 % Outputs
 % - A - connectivity matrix (can be directed; A(i,j) means a link exists from i->j)
@@ -27,17 +33,33 @@ function A = generateNewRandomMatrix(N, p, allowSelf, undirected, ensureConnecte
 % Copyright (C) 2023 Joseph T. Lizier
 % Distributed under GNU General Public License v3
 
+if (length(varargin) == 1)
+    % User has provided a parameters object directly or a string specifying
+    % the filename to load a parameters object in.
+    parameters = varargin{1};
+    N = parameters.N;
+    p = parameters.p;
+    allowSelf = parameters.allowSelf;
+    undirected = parameters.undirected;
+    ensureConnected = parameters.ensureConnected;
+    if isprop(parameters, 'ensureALinkForEachNode')
+        ensureALinkForEachNode = parameters.ensureALinkForEachNode;
+    else
+        ensureALinkForEachNode = false;
+    end
+else
+    if (nargin < 6)
+        % This will be overridden if ensureConnected == true
+        ensureALinkForEachNode = false;
+    end
+end
+
 if (allowSelf)
     numPossibleDirectedConnections = N * N;
     withSelfSuffix = '';
 else
     numPossibleDirectedConnections = N * (N - 1);
     withSelfSuffix = 'out';
-end
-
-if (nargin < 6)
-    % This will be overridden if ensureConnected == true
-    ensureALinkForEachNode = false;
 end
 
 if (ensureConnected)

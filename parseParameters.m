@@ -24,7 +24,7 @@ if (length(varargin) == 1)
     undirected = parameters.undirected;
     discretized = parameters.discretized;
     repeats = parameters.repeats;
-    networkType = parameters.networkType;
+    generateNetworkFunction = parameters.generateNetworkFunction;
     p = parameters.p;
     d = parameters.d;
     S = parameters.S;
@@ -38,13 +38,14 @@ elseif (length(varargin) < 12)
     fprintf('Not enough arguments supplied, see code for details');
 else
     % All parameters have been supplied individually
+    %  We are *deprecating* this method!
     N = varargin{1};
     b = varargin{2};
     c = varargin{3};
     undirected = varargin{4};
     discretized = varargin{5};
     repeats = varargin{6};
-    networkType = varargin{7};
+    generateNetworkFunction = varargin{7};
     p = varargin{8};
     d = varargin{9};
     S = varargin{10};
@@ -66,4 +67,18 @@ else
     else
         randSeed = 'shuffle';
     end
+end
+
+% Now pull out some useful strings (for filenames and debug prints)
+% from these properties:
+% Generate string for the boolean arguments ready for file names
+if (undirected)
+    undirString = 'un';
+else
+    undirString = 'dir';
+end
+if (discretized)
+    discString = 'disc';
+else
+    discString = 'cont';
 end
