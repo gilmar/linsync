@@ -13,8 +13,10 @@ function result = isdiagonalizable(C)
     tolerance = 1e-5;
 
     % Check that we can recompose directly from the left eigenvectors and eigenvalues (slower):
+    w = warning('off', 'all'); % Get lots of warnings for non-diagonalisable matrices here
     [~, D, leftEigsTransposed] = eig(C);
-    recomposedFromLeftEigs = inv(leftEigsTransposed') * D * leftEigsTransposed';
+    recomposedFromLeftEigs = (leftEigsTransposed') \  D * leftEigsTransposed'; % == inv(leftEigsTransposed') *  D * leftEigsTransposed'
+    warning(w); % Restore previous warning state
     if (max(max(abs(C - recomposedFromLeftEigs))) > tolerance)
         % The diagonalization didn't work well
         result = false;
