@@ -14,7 +14,7 @@
 figure1Parameters;
 
 % Add the toolkit to the path:
-addpath(genpath(parameters.syncToolkitPath));
+addpath(parameters.syncToolkitPath);
 
 % Make sure the folder for the results to be stored in exists:
 if (exist(parameters.folder, 'dir') == 0)
@@ -43,7 +43,7 @@ end
 % will take much longer for 2000 repeats and S up to 1000000 -- 
 % Better to do on cluster for that many.
 
-% Now plot the results:
+%% Now plot the results:
 plotErrorInEmpiricalSyncResults(parameters);
 figure(2); % Select the correct plot we're keeping
 print('-depsc', [parameters.folder, 'fig1.eps'])
