@@ -54,11 +54,18 @@ parameters.discretized = false;
 %   quickly, or on the cluster
 parameters.repeats = 10;
 
+% DEPRECATED - instead use generateNetworkFunction
 % - networkType. Options are:
 %   - 'rand' - random network
 %   - 'randFixedD' - random network with fixed in-degree
 %   - 'randRing' - a ring network with randomly rewired edges (Watts-Strogatz model).
-parameters.networkType = 'randRing';
+% parameters.networkType = 'randRing';
+
+% - generateNetworkFunction. Function to generate the network structure. Options are:
+%   - 'generateNewRandomMatrix' - random network
+%   - 'generateNewRandomFixedDMatrix' - random network with fixed in-degree
+%   - 'generateNewRandomRingMatrix' - a ring network with randomly rewired edges (Watts-Strogatz model).
+parameters.generateNetworkFunction = 'generateNewRandomRingMatrix';
 
 % Next 2 arguments that follow depend on which network type was requested:
 
@@ -70,6 +77,11 @@ parameters.p = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0];
 % - d - degree for randRing network type. d/2 links on either side of the
 %   node.
 parameters.d = 4;
+
+% - weightTheNetworkFunction. Function to weight the network structure. Options are:
+%   - 'weightNetworkStandard' - apply (b-c) to self-links and c/d to cross
+%     links for standard no delay case
+parameters.weightTheNetworkFunction = 'weightNetworkStandard';
 
 % - S - number of samples for the empirical calculation
 %   (known as L in our first sync paper). Need very large
