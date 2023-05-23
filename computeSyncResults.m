@@ -92,16 +92,9 @@ for paramIndex = 1 : indices
             A = feval(parameters.generateNetworkFunction, parameters);
 
             % Generate the weighted update matrix C from A (in row-vector form following Barnett).
-            % Compute the in-degrees for each node (take a column sum)
-            D = diag(sum(A));
-            % Compute connectivity matrix:
-            %  (notice how b-c is the self-weight, and c is the total
-            %   weight from d other inputs, which each have c/d.
-            %   Equal weights c/d are not required by the maths, but used for simply experiments here.)
-            C = (b - c) .* I + c .* A * inv(D);
+            C = feval(parameters.weightTheNetworkFunction, A, parameters);
 
             % Generate the projected covariance matrix (UcovarianceU == U /Omega U) for it
-
             [sortedLambdasCU, UcovarianceU, err] = covarianceUGaussianNet(C, discretized, MaxK, false, 1);
             % if err==2 then the UcovarianceU matrix failed to converge and we'll loop again
         end

@@ -78,6 +78,11 @@ parameters.p = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0];
 %   node.
 parameters.d = 4;
 
+% - weightTheNetworkFunction. Function to weight the network structure. Options are:
+%   - 'weightNetworkStandard' - apply (b-c) to self-links and c/d to cross
+%     links for standard no delay case
+parameters.weightTheNetworkFunction = 'weightNetworkStandard';
+
 % - S - number of samples for the empirical calculation
 %   (known as L in our first sync paper). Need very large
 %   if you want high accuracy; see e.g. Fig 4 in Barnett (2009), though
