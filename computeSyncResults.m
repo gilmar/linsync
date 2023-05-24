@@ -26,16 +26,17 @@ function computeSyncResults(varargin)
 %% Preliminaries:
 
 % Parse the vargin to have each parameter in its own variable (See list
-% above)
+% above), and to have parameters defined.
 parseParameters;
+% Note: be careful not to refer to parameters until referring to a member
+% of it, else on the cluster if we have parameters.m defined, Matlab can
+% think that we're referring to that (weird error)
 
 tic;
 
 I = eye(N);
 G = ones(N)./N;
 U = I - G;
-
-originalParameters = parameters; % Store for later
 
 varyingP = false;
 if (length(p) > 1)

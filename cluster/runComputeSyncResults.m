@@ -22,7 +22,7 @@ end
 % Postcondition: parameters are in the parameters object
 
 % Add the toolkit to the path
-addpath(genpath(parameters.syncToolkitPath));
+addpath(parameters.syncToolkitPath);
 
 fprintf('Beginning calculation of sync results for folder %s\n', parameters.folder);
 
