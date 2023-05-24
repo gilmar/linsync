@@ -2,7 +2,7 @@ function plotSyncResults(varargin)
 %% function plotSyncResults(N, b, c, undirected, discretized, repeats, networkType, p, d, S, maxMotifLength, folder, MaxK, dt)
 % function plotSyncResults(parameters)
 %
-% Plot the synchronisation versus p or c for a number of network samples
+% Plot the synchronisation versus one parameter for a number of network samples
 %  (discrete time AR or continuous time Ornstein-Uhlenbeck specified in input).
 % without running them, by retrieving results from files saved previously by computeSyncResults
 %
@@ -12,13 +12,13 @@ function plotSyncResults(varargin)
 % - Option 1 -- (a filename string or object)
 %   - parameters - an object containing the expected properties (as outlined below), or a string
 %     describing the filename to run load this object in
-% - Option 2 -- (all supplied individually)
+% - Option 2 -- DEPRECATED -- (all supplied individually)
 %   - definitions of individual variables are as specified in the parametersTemplate.m script.
 %     We require the following to be defined in order:
 %     N, b, c, undirected, discretized, repeats, networkType, p, d, S, maxMotifLength, folder
 %     The following are optional:
 %     MaxK, dt
-%  One of p or c should be an array, which determines which we plot
+%  One parameter should be an array, which determines which we plot
 %  against.
 %
 %% Linear Sync Toolkit (linsync)
@@ -42,33 +42,19 @@ else
     discString = 'cont';
 end
 
-varyingP = false;
-if (length(p) > 1)
-    % we're varying p
-    varyingP = true;
-    paramsToRunThrough = p;
-else
-    % assume we're varying c
-    paramsToRunThrough = c;
-end
-if (size(paramsToRunThrough, 2) > size(paramsToRunThrough,1)) % More columns than rows
-    % Make it a column vector
-    paramsToRunThrough = paramsToRunThrough';
-end
+% Pull out the array of parameters that we will sweep through here:
+paramsToRunThrough = parameters.(parameters.tosweep);
+% But replace the swept parameter with its final value (for generating the
+% results file names)
+parameters.(parameters.tosweep) = parameters.(parameters.tosweep)(end);
 
 % Load the processed results here:
 [networkType, netTypeSuffix] = generateNetworkTypeStrings(parameters);
-if (varyingP)
-    % Put full range of p back into the variable p
-    p = paramsToRunThrough;
-    fileNamePrefix = sprintf('%s/N%d-%s%s-b%.2f-c%.2f-%s-k%d-%s-S%d-repeats%d', ...
-                folder, N, networkType, netTypeSuffix, b, c, undirString, maxMotifLength, discString, S, repeats);
-else
-    % Put full range of c back into the variable c
-    c = paramsToRunThrough;
-    fileNamePrefix = sprintf('%s/N%d-%s%s-b%.2f-p%.4f-%s-k%d-%s-S%d-repeats%d', ...
-                folder, N, networkType, netTypeSuffix, b, p, undirString, maxMotifLength, discString, S, repeats);
-end
+% This will generate filename prefix with the *final* value of the swept
+%  parameter, but parameter being swept will be indicated
+fileNamePrefix = sprintf('%s/N%d-%s%s-b%.2f-c%.2f-p%.4f-sweep_%s-%s-k%d-%s-S%d-repeats%d', ...
+            folder, parameters.N, networkType, netTypeSuffix, parameters.b, parameters.c, parameters.p, ...
+            parameters.tosweep, undirString, maxMotifLength, discString, S, repeats);
 try
     load([fileNamePrefix, '.mat'], '-mat', 'N', 'd', 'b', 'c', 'p', 'undirected', 'maxMotifLength', 'discretized', ...
         'networkType', 'paramsToRunThrough', 'S', 'repeats', ...
@@ -184,23 +170,24 @@ hold off;
 yyaxis left
 set(gca, 'YColor', [0 0 0]); % otherwise it is blue
 ylabel('< \sigma^2 >');
-if (varyingP)
+if (strcmp('p', parameters.tosweep))
+    % Have a log axis if we're sweeping the p parameter for the network
     set(gca, 'XScale','log');
-    xlabel('p');
 else
     set(gca, 'XScale','linear');
-    xlabel('c');
 end
+xlabel(parameters.tosweep_label);
 a = axis;
 % Hard code the sigma^2 limits based on the max deviation from sync
 a(3:4) = [0, avSyncWidths(1) ./ syncWidthsNormaliser * 1.2];
 maxForSigma = a(4); % Max y value on sigma^2 axis
-if (varyingP)
+if (strcmp('p', parameters.tosweep))
     % Put a bit of space on the side of the axes
     a(1:2) = [a(1)/1.2, a(2)*1.2];
 else
     % Put a bit of space on the side of the axes
-    a(1:2) = [c(1) - (c(2)-c(1)), c(end)+(c(end)-c(end-1))];
+    a(1:2) = [paramsToRunThrough(1) - (paramsToRunThrough(2)-paramsToRunThrough(1)), ...
+        paramsToRunThrough(end)+(paramsToRunThrough(end)-paramsToRunThrough(end-1))];
 end
 axis(a)
 % Now adjust eigenvalue axis:
