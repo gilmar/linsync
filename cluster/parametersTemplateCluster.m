@@ -71,6 +71,13 @@ parameters.p = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0];
 %   node.
 parameters.d = 4;
 
+% - tosweep - define which of the parameters we will sweep along when we
+%   run computeSyncResults. Should be named without 'parameters.' at the
+%   start
+parameters.tosweep = 'p';
+% - tosweep_label - short label for the toweep parameter for plots
+parameters.tosweep_label = 'p';
+
 % - S - number of samples for the empirical calculation
 %   (known as L in our first sync paper). Need very large
 %   if you want high accuracy; see e.g. Fig 4 in Barnett (2009), though

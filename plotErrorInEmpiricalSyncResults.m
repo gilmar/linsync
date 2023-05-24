@@ -13,7 +13,7 @@ function plotErrorInEmpiricalSyncResults(varargin)
 % - Option 1 -- (a filename string or object)
 %   - parameters - an object containing the expected properties (as outlined below), or a string
 %     describing the filename to run load this object in
-% - Option 2 -- (all supplied individually)
+% - Option 2 -- DEPRECATED -- (all supplied individually)
 %   - definitions of individual variables are as specified in the parametersTemplate.m script.
 %     We require the following to be defined in order:
 %     N, b, c, undirected, discretized, repeats, networkType, p, d, S, maxMotifLength, folder
@@ -44,30 +44,16 @@ else
     discString = 'cont';
 end
 
-% This script assumes only p is varied, not c, for experiments on empirical
-% error, but we'll leave the option for varying c here in case we use it
-% later.
-varyingP = true; 
-if (length(p) > 1)
-    % we're varying p
-    varyingP = true;
-    paramsToRunThrough = p;
-else
-    if (length(c) > 1)
-        varyingP = false;
-    end
-    % else varyingP will take the default value assigned above
-    paramsToRunThrough = c;
-end
-if (size(paramsToRunThrough, 2) > size(paramsToRunThrough,1)) % More columns than rows
-    % Make it a column vector
-    paramsToRunThrough = paramsToRunThrough';
-end
+% Pull out the array of parameters that we will sweep through here:
+paramsToRunThrough = parameters.(parameters.tosweep);
+% But replace the swept parameter with its final value (for generating the
+% results file names)
+parameters.(parameters.tosweep) = parameters.(parameters.tosweep)(end);
 
 % Load the processed results here:
 [networkType, netTypeSuffix] = generateNetworkTypeStrings(parameters);
 
-% Now plot the errors of the empirical values for some fixed p value:
+% Now plot the errors of the empirical values as a function of S and the swept parameter:
 
 avAbsoluteEmpiricalErrors = zeros(length(SRangeToPlot), length(paramsToRunThrough));
 avRelativeEmpiricalErrors = zeros(length(SRangeToPlot), length(paramsToRunThrough));
@@ -78,20 +64,17 @@ stdRelativeEmpiricalErrors = zeros(length(SRangeToPlot), length(paramsToRunThrou
 
 for sIndex = 1:length(SRangeToPlot)
     s = SRangeToPlot(sIndex);
-    if (varyingP)
-        % Put full range of p back into the variable p
-        fileNamePrefix = sprintf('%s/N%d-%s%s-b%.2f-c%.2f-%s-k%d-%s-S%d-repeats%d', ...
-                    folder, N, networkType, netTypeSuffix, b, c, undirString, maxMotifLength, discString, s, repeats);
-    else
-        % Put full range of c back into the variable c
-        fileNamePrefix = sprintf('%s/N%d-%s%s-b%.2f-p%.4f-%s-k%d-%s-S%d-repeats%d', ...
-                    folder, N, networkType, netTypeSuffix, b, p, undirString, maxMotifLength, discString, s, repeats);
-    end
-    load([fileNamePrefix, '.mat'], '-mat', 'N', 'd', 'b', 'c', 'p', 'undirected', 'maxMotifLength', 'discretized', ...
-        'networkType', 'paramsToRunThrough', 'repeats', ... % 'S', 'repeats', ...
-        'syncWidths', 'syncWidthApproxes', 'syncWidthEmpirical', ...
-        'dominantEigenvalues', 'secondEigenvalues');
-    % Now grab the relative error against s for each p
+
+    % This will generate filename prefix with the *final* value of the swept
+    %  parameter, but parameter being swept will be indicated
+    fileNamePrefix = sprintf('%s/N%d-%s%s-b%.2f-c%.2f-p%.4f-sweep_%s-%s-k%d-%s-S%d-repeats%d', ...
+                folder, parameters.N, networkType, netTypeSuffix, parameters.b, parameters.c, parameters.p, ...
+                parameters.tosweep, undirString, maxMotifLength, discString, s, repeats);
+
+    load([fileNamePrefix, '.mat'], '-mat', 'repeats', ...
+        'syncWidths', 'syncWidthEmpirical');
+    % Now grab the relative error against s for each value of the parameter being
+    % swept
     avRelativeEmpiricalErrors(sIndex,:) = mean(abs(syncWidthEmpirical - syncWidths) ./ syncWidths, 2)';
     stdRelativeEmpiricalErrors(sIndex,:) = std(abs(syncWidthEmpirical - syncWidths) ./ syncWidths, 0, 2)';
     avAbsoluteEmpiricalErrors(sIndex,:) = mean(abs(syncWidthEmpirical - syncWidths), 2)';
@@ -107,13 +90,13 @@ toc
 % print('-depsc', [fileNamePrefix, '.eps'])
 % saveas(gca, [fileNamePrefix, '.fig'], 'fig');
 
-% Now plot Relative errors for each p and S: (this is the one for the
+% Now plot Relative errors for each parameter and S: (this is the one for the
 % paper)
 figure(2)
 hold off;
-h = zeros(length(p), 1);
+h = zeros(length(paramsToRunThrough), 1);
 labels = {};
-for pIndex = 1:length(p)
+for pIndex = 1:length(paramsToRunThrough)
     % h(pIndex) = loglog(SRangeToPlot, avRelativeEmpiricalErrors(:,pIndex)', '-x', 'markersize', 10);
     % Correct symmetric error bars as described at ...
     % https://faculty.washington.edu/stuve/log_error.pdf -- ...
@@ -122,11 +105,11 @@ for pIndex = 1:length(p)
         avRelativeEmpiricalErrors(:,pIndex)'.*(1-10.^(-logErrorBars)), ...
         avRelativeEmpiricalErrors(:,pIndex)'.*(10.^(logErrorBars) - 1), ...
         'x', 'markersize', 10);
-    labels{pIndex} = sprintf('p=%.3f', p(pIndex));
+    labels{pIndex} = sprintf('%s=%.3f', parameters.tosweep_label, paramsToRunThrough(pIndex));
     hold on;
 end
-palette = jet (length(p));
-for i =1:length(p)
+palette = jet (length(paramsToRunThrough));
+for i =1:length(paramsToRunThrough)
     set(h(i),'color',palette(i,:))
 end
 % h
@@ -145,12 +128,12 @@ axis(a)
 avRelativeEmpiricalErrors % debug print this
 stdRelativeEmpiricalErrors % debug print this
 
-% Now plot absolute errors for each p and S:
+% Now plot absolute errors for each parameter and S:
 figure(3)
 hold off;
-h = zeros(length(p), 1);
+h = zeros(length(paramsToRunThrough), 1);
 labels = {};
-for pIndex = 1:length(p)
+for pIndex = 1:length(paramsToRunThrough)
     % h(pIndex) = loglog(SRangeToPlot, avAbsoluteEmpiricalErrors(:,pIndex)', '-x', 'markersize', 10);
     % h(pIndex) = errorbar(SRangeToPlot, avAbsoluteEmpiricalErrors(:,pIndex)', stdAbsoluteEmpiricalErrors(:,pIndex)', ...
     %    '-x', 'markersize', 10);
@@ -159,11 +142,11 @@ for pIndex = 1:length(p)
         avAbsoluteEmpiricalErrors(:,pIndex)'.*(1-10.^(-logErrorBars)), ...
         avAbsoluteEmpiricalErrors(:,pIndex)'.*(10.^(logErrorBars) - 1), ...
         '-x', 'markersize', 10);
-    labels{pIndex} = sprintf('p=%.3f', p(pIndex));
+    labels{pIndex} = sprintf('%s=%.3f', parameters.tosweep_label, paramsToRunThrough(pIndex));
     hold on;
 end
-palette = jet (length(p));
-for i =1:length(p)
+palette = jet (length(paramsToRunThrough));
+for i =1:length(paramsToRunThrough)
     set(h(i),'color',palette(i,:))
 end
 % h;
@@ -177,18 +160,18 @@ ylabel('Absolute error');
 
 avAbsoluteEmpiricalErrors
 
-% Now plot RMS errors for each p and S:
+% Now plot RMS errors for each parameter and S:
 figure(4)
 hold off;
-h = zeros(length(p), 1);
+h = zeros(length(paramsToRunThrough), 1);
 labels = {};
-for pIndex = 1:length(p)
+for pIndex = 1:length(paramsToRunThrough)
     h(pIndex) = loglog(SRangeToPlot, rmsEmpiricalErrors(:,pIndex)', '-x', 'markersize', 10);
-    labels{pIndex} = sprintf('p=%.3f', p(pIndex));
+    labels{pIndex} = sprintf('%s=%.3f', parameters.tosweep_label, paramsToRunThrough(pIndex));
     hold on;
 end
-palette = jet (length(p));
-for i =1:length(p)
+palette = jet (length(paramsToRunThrough));
+for i =1:length(paramsToRunThrough)
     set(h(i),'color',palette(i,:))
 end
 % h;

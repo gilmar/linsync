@@ -34,6 +34,7 @@ if (length(varargin) == 1)
     MaxK = parameters.MaxK;
     dt = parameters.dt;
     randSeed = parameters.randSeed;
+    originalParameters = parameters; % Store for later
 elseif (length(varargin) < 12)
     fprintf('Not enough arguments supplied, see code for details');
 else

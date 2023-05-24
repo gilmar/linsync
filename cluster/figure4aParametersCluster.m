@@ -83,6 +83,13 @@ parameters.d = 2;
 %     links for standard no delay case
 parameters.weightTheNetworkFunction = 'weightNetworkStandard';
 
+% - tosweep - define which of the parameters we will sweep along when we
+%   run computeSyncResults. Should be named without 'parameters.' at the
+%   start
+parameters.tosweep = 'p';
+% - tosweep_label - short label for the toweep parameter for plots
+parameters.tosweep_label = 'p';
+
 % - S - number of samples for the empirical calculation
 %   (known as L in our first sync paper). Need very large
 %   if you want high accuracy; see e.g. Fig 4 in Barnett (2009), though

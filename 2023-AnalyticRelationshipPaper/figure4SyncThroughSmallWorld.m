@@ -93,6 +93,8 @@ saveas(gca, [parameters.folder, 'fig4e.fig'], 'fig');
 % Switch to a sweep across c for fixed p:
 parameters.p = 0.001;
 parameters.c = 0.1:0.1:1.0;
+parameters.tosweep = 'c';
+parameters.tosweep_label = 'c';
 computeSyncResults(parameters);
 % Takes about 1.25 mins on my machine for 10 repeats, 2 hours for 1000
 % repeats. Better to do on cluster for that many.

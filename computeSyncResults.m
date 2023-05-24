@@ -38,21 +38,9 @@ I = eye(N);
 G = ones(N)./N;
 U = I - G;
 
-varyingP = false;
-if (length(p) > 1)
-    % we're varying p
-    varyingP = true;
-    indices = length(p);
-    paramsToRunThrough = p;
-else
-    % assume we're varying c
-    indices = length(c);
-    paramsToRunThrough = c;
-end
-if (size(paramsToRunThrough, 2) > size(paramsToRunThrough,1)) % More columns than rows
-    % Make it a column vector
-    paramsToRunThrough = paramsToRunThrough';
-end
+% Pull out the array of parameters that we will sweep through here:
+paramsToRunThrough = parameters.(parameters.tosweep);
+indices = length(paramsToRunThrough);
 
 % Create storage for the means
 syncWidths = zeros(indices, repeats);
@@ -65,16 +53,12 @@ diagonalizable = zeros(indices, repeats);
 % Seed the random number generator
 rng(randSeed);
 
-%% Main loop over parameters to run experiments for (p or c array):
+%% Main loop over parameter we are sweeping whilst running experiments:
 for paramIndex = 1 : indices
     fprintf('Param index %d:\n===============\n\n', paramIndex);
 
-    if (varyingP)
-        parameters.p = paramsToRunThrough(paramIndex);
-    else
-        c = paramsToRunThrough(paramIndex);
-        parameters.c = paramsToRunThrough(paramIndex);
-    end
+    % Assign this particular parameter in the parameters object:
+    parameters.(parameters.tosweep) = paramsToRunThrough(paramIndex);
 
     % Now run experiments for each sample network for this parameter
     for r = 1 : repeats
@@ -161,21 +145,14 @@ for paramIndex = 1 : indices
         mean(diagonalizable(paramIndex, :)));
 end                
 
-parameters = originalParameters; % Restore the original parameters
-
 %% Save the processed results here:
 [networkType, netTypeSuffix] = generateNetworkTypeStrings(parameters);
-if (varyingP)
-    % Put full range of p back into the variable p
-    p = paramsToRunThrough;
-    fileNamePrefix = sprintf('%s/N%d-%s%s-b%.2f-c%.2f-%s-k%d-%s-S%d-repeats%d', ...
-                folder, N, networkType, netTypeSuffix, b, c, undirString, maxMotifLength, discString, S, repeats);
-else
-    % Put full range of c back into the variable c
-    c = paramsToRunThrough;
-    fileNamePrefix = sprintf('%s/N%d-%s%s-b%.2f-p%.4f-%s-k%d-%s-S%d-repeats%d', ...
-                folder, N, networkType, netTypeSuffix, b, p, undirString, maxMotifLength, discString, S, repeats);
-end
+% This will generate filename prefix with the *final* value of the swept
+%  parameter, but parameter being swept will be indicated
+fileNamePrefix = sprintf('%s/N%d-%s%s-b%.2f-c%.2f-p%.4f-sweep_%s-%s-k%d-%s-S%d-repeats%d', ...
+                folder, parameters.N, networkType, netTypeSuffix, parameters.b, parameters.c, parameters.p, ...
+                parameters.tosweep, undirString, maxMotifLength, discString, S, repeats);
+
 % Convert booleans to integers so Matlab can save them
 if (discretized)
     discretized = 1;
@@ -187,6 +164,8 @@ if (undirected)
 else
     undirected = 0;
 end
+
+parameters = originalParameters; % Restore the original parameters
 
 % Ready to save - let's make sure the folder exists first:
 if (~exist(folder, 'dir'))

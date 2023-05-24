@@ -81,7 +81,16 @@ parameters.d = 4;
 % - weightTheNetworkFunction. Function to weight the network structure. Options are:
 %   - 'weightNetworkStandard' - apply (b-c) to self-links and c/d to cross
 %     links for standard no delay case
+%   - 'weightNetworkStandardWithFixedDelay' - apply (b-c) to self-links at standard lag and c/d to cross
+%     links for at parameters.delay.fixedCross
 parameters.weightTheNetworkFunction = 'weightNetworkStandard';
+
+% - tosweep - define which of the parameters we will sweep along when we
+%   run computeSyncResults. Should be named without 'parameters.' at the
+%   start
+parameters.tosweep = 'p';
+% - tosweep_label - short label for the toweep parameter for plots
+parameters.tosweep_label = 'p';
 
 % - S - number of samples for the empirical calculation
 %   (known as L in our first sync paper). Need very large
