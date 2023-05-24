@@ -21,7 +21,7 @@ if ischar(parameters)
 end
 % Postcondition: parameters are in the parameters object
 
-addpath(genpath(parameters.syncToolkitPath));
+addpath(parameters.syncToolkitPath);
 
 fprintf('Beginning combining sync results from dir %s into %s\n', parameters.combineResultsFrom, parameters.folder);
 
@@ -37,46 +37,23 @@ else
     discString = 'cont';
 end
 
-varyingP = false;
-if (length(parameters.p) > 1)
-    % we're varying p
-    varyingP = true;
-    indices = length(parameters.p);
-    paramsToRunThrough = parameters.p;
-else
-    % assume we're varying c
-    indices = length(parameters.c);
-    paramsToRunThrough = parameters.c;
-end
-if (size(paramsToRunThrough, 2) > size(paramsToRunThrough,1)) % More columns than rows
-    % Make it a column vector
-    paramsToRunThrough = paramsToRunThrough';
-end
+% Pull out the array of parameters that we will sweep through here:
+paramsToRunThrough = parameters.(parameters.tosweep);
+% But replace the swept parameter with its final value (for generating the
+% results file names)
+parameters.(parameters.tosweep) = parameters.(parameters.tosweep)(end);
 
-% Save the processed results here:
-if (strcmp(parameters.networkType, 'randRing'))
-    dString = sprintf('-d%d', parameters.d);
-else
-    dString = '';
-end
+[networkType, netTypeSuffix] = generateNetworkTypeStrings(parameters);
 
-for S = parameters.SRangeToPlot
+for s = parameters.SRangeToPlot
     tic
     
     % Get filename prefix sorted:
-    if (varyingP)
-        % Put full range of p back into the variable p
-        p = paramsToRunThrough;
-        fileNameSuffix = sprintf('N%d-%s%s-b%.2f-c%.2f-%s-k%d-%s-S%d-repeats*', ...
-                    parameters.N, parameters.networkType, dString, parameters.b, ...
-                    parameters.c, undirString, parameters.maxMotifLength, discString, S);
-    else
-        % Put full range of c back into the variable c
-        c = paramsToRunThrough;
-        fileNameSuffix = sprintf('N%d-%s%s-b%.2f-p%.4f-%s-k%d-%s-S%d-repeats*', ...
-                    parameters.N, parameters.networkType, dString, parameters.b, ...
-                    parameters.p, undirString, parameters.maxMotifLength, discString, S);
-    end
+    % This will generate filename prefix with the *final* value of the swept
+    %  parameter, but parameter being swept will be indicated
+    fileNameSuffix = sprintf('N%d-%s%s-b%.2f-c%.2f-p%.4f-sweep_%s-%s-k%d-%s-S%d-repeats*', ...
+            parameters.N, networkType, netTypeSuffix, parameters.b, parameters.c, parameters.p, ...
+            parameters.tosweep, undirString, parameters.maxMotifLength, discString, s);
     
     totalRepeats = 0;
     allSyncWidths = [];
@@ -89,34 +66,35 @@ for S = parameters.SRangeToPlot
     for index = 3:length(filesInResultsDir) % Skip . and ..
         file = filesInResultsDir(index);
         if file.isdir
-                % Loads: 'N', 'd', 'b', 'c', 'p', 'undirected', 'maxMotifLength', 'discretized', ...
-                % 'networkType', 'paramsToRunThrough', 'S', 'repeats', ...
-                % 'syncWidths', 'syncWidthApproxes', 'syncWidthEmpirical', ...
-                % 'dominantEigenvalues', 'secondEigenvalues');
-                resultsFilenameTemplate = [parameters.combineResultsFrom, '/', file.name, '/', fileNameSuffix, '.mat'];
-                try
-                    resultsFilename = strtrim(ls(resultsFilenameTemplate)); % match the correct number of repeats
-                catch ME
-                    % ls will return an error if there are no matches
-                    fprintf('No results file found in folder %s\n', file.name);
-                    continue;
-                end
-                if ~exist(resultsFilename, 'file')
-                    fprintf('No results file found in folder %s (should not happen here)\n', file.name);
-                    continue;
-                end
-                load(resultsFilename);
-                totalRepeats = totalRepeats + repeats;
-                fprintf('Loaded %d repeats from folder %s (running total %d)\n', repeats, file.name, totalRepeats);
-                allSyncWidths = [allSyncWidths, syncWidths];
-                allSyncWidthApproxes = cat(3, allSyncWidthApproxes, syncWidthApproxes);
-                allSyncWidthEmpirical = [allSyncWidthEmpirical, syncWidthEmpirical];
-                allDominantEigenvalues = [allDominantEigenvalues, dominantEigenvalues];
-                allSecondEigenvalues = [allSecondEigenvalues, secondEigenvalues];
+            resultsFilenameTemplate = [parameters.combineResultsFrom, '/', file.name, '/', fileNameSuffix, '.mat'];
+            try
+                resultsFilename = strtrim(ls(resultsFilenameTemplate)); % match the correct number of repeats
+            catch ME
+                % ls will return an error if there are no matches
+                fprintf('No results file found in folder %s\n', file.name);
+                continue;
+            end
+            if ~exist(resultsFilename, 'file')
+                fprintf('No results file found in folder %s (should not happen here)\n', file.name);
+                continue;
+            end
+            % Make sure we don't overwrite the parameters variable, just
+            % load in the others to be re-saved later
+            load(resultsFilename, 'N', 'd', 'b', 'c', 'p', 'undirected', 'maxMotifLength', 'discretized', ...
+                'networkType', 'paramsToRunThrough', 'S', 'repeats', 'syncWidths', 'syncWidthApproxes', ...
+                'syncWidthEmpirical', 'dominantEigenvalues', 'secondEigenvalues');
+            totalRepeats = totalRepeats + repeats;
+            fprintf('Loaded %d repeats from folder %s (running total %d)\n', repeats, file.name, totalRepeats);
+            allSyncWidths = [allSyncWidths, syncWidths];
+            allSyncWidthApproxes = cat(3, allSyncWidthApproxes, syncWidthApproxes);
+            allSyncWidthEmpirical = [allSyncWidthEmpirical, syncWidthEmpirical];
+            allDominantEigenvalues = [allDominantEigenvalues, dominantEigenvalues];
+            allSecondEigenvalues = [allSecondEigenvalues, secondEigenvalues];
         end
     end
     if (totalRepeats == 0)
-        error('No results found - did you set parameters.combineResultsFrom correctly? Filename suffix sought is %s', fileNameSuffix);
+        error('No results found - did you set parameters.combineResultsFrom correctly (%s)?\nFilename suffix sought is %s', ...
+            parameters.combineResultsFrom, fileNameSuffix);
     end
     % All results have been sorted. So now rename them and save into the
     % new file. Also change the final filename for the correct number of
@@ -138,7 +116,7 @@ for S = parameters.SRangeToPlot
     save(combinedFilename, '-mat', 'N', 'd', 'b', 'c', 'p', 'undirected', 'maxMotifLength', 'discretized', ...
          'networkType', 'paramsToRunThrough', 'S', 'repeats', ...
          'syncWidths', 'syncWidthApproxes', 'syncWidthEmpirical', ...
-         'dominantEigenvalues', 'secondEigenvalues');
+         'dominantEigenvalues', 'secondEigenvalues', 'parameters');
     fprintf('Saving results from %d total repeats to %s\n', repeats, combinedFilename);
 
     toc
