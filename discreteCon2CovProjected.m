@@ -79,8 +79,8 @@ leftMultiplier = U * C';
 rightMultiplier = C * U;
 
 for i = 1:maxi
-    % dProjM holds the previous C'^i * C^i term
-    % ProjM holds the sum of previous projected C'^i * C^i terms
+    % dProjM holds the previous term added in (for i > 1)
+    % ProjM holds the sum of previous projected terms
     leftComponent = leftComponent * leftMultiplier;
     rightComponent = rightMultiplier * rightComponent;
     d_UcovarianceU = leftComponent * rightComponent;

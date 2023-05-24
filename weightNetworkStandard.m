@@ -5,13 +5,13 @@ function C = weightNetworkStandard(A, parameters)
 %
 % - Inputs
 %   - A - the unweighted adjacency matrix for an NxN matrix (assumed to
-%   have entries 0 or 1.
+%   have entries 0 or 1, and none on diagonal).
 %   - parameters - object containing the experimental parameters, including:
 %       - parameters.b - total weight summed into each target
 %       - parameters.c - total cross-connection weight
 %
 % Outputs
-% - C - weighted connectivity matrix (can be directed; C(i,j) means a link exists from i->j)
+% - C - NxN weighted connectivity matrix (can be directed; C(i,j) means a link exists from i->j)
 %
 %% Linear Sync Toolkit (linsync)
 % Copyright (C) 2023 Joseph T. Lizier
