@@ -1,11 +1,21 @@
-function [sortedLambdasCU, UcovarianceU, err] = covarianceUGaussianNet(C, discreteTime, maximumIterations, forcePowerSeriesForSymmetric, verbose, skipPowerSeriesConvergenceCheck)
+function [sortedLambdasAfterProj, UcovarianceXU, B, err] = covarianceUGaussianNet(C, discreteTime, maximumIterations, forcePowerSeriesForSymmetric, verbose, skipPowerSeriesConvergenceCheck)
 %
-% Computes the eigenvalues of C, and the projected covariance matrix (U^T \Omega U) for the given network.
+% Computes the eigenvalues of C, and the relevant projected covariance matrix (U^T \Omega U) for the given network.
 %
 % Inputs
-% - C - connectivity matrix, including self-connection weights (in the Cij = i -> j format, i.e. for row-vectors)
-% - discreteTime - whether the time-series is estimated from a discrete-time AR process (true)
-%    or use of exact method assuming continuous Ornstein-Uhlenbeck process.
+% - C - Either:
+%     - an NxN connectivity matrix, including self-connection weights (in the Cij
+%       = i -> j format, i.e. for row-vectors), for standard connections at the
+%       standard delay (being regular delay 1 for discrete time or no delay
+%       for continuous time).
+%     - or an NxNx(tau+1) matrix representing coupling matrices of C(n)
+%       from discrete time steps 1+n in the past (for n=0:tau).
+%       Each C(i,j,n) matrix represents connections Cij = i->j as before but
+%       over lag 1+n. Can have non-zero weights at multiple n for each
+%       i->j.
+%       Only valid for discreteTime=true at present.
+% - discreteTime - whether the time-series dynamics from a discrete-time AR process (true)
+%    or continuous time Ornstein-Uhlenbeck process.
 % - maximumIterations - the number of components to add into the power series for UcovarianceU. Default is 1000
 % - forcePowerSeriesForSymmetric - force the use of power series for UcovarianceU even if the
 %     connectivity matrix is symmetric
@@ -17,9 +27,17 @@ function [sortedLambdasCU, UcovarianceU, err] = covarianceUGaussianNet(C, discre
 %     dynamics). Default is false.
 % 
 % Outputs
-% - sortedLambdasCU - sorted eigenvalues of CU (from smallest to largest magnitude if complex)
-% - UcovarianceU - projected covariance matrix U^T \Omega U, for U = I - 1/N and
-%     \Omega is the covariance matrix, assuming the Ornstein-Uhlenbeck or AR process.
+% - sortedLambdasAfterProj - sorted eigenvalues of CU (if C is NxN) or 
+%    BU (if including delays), (from smallest to largest magnitude if complex)
+% - UcovarianceXU - projected covariance matrix U^T \Omega_X U, of system X
+%     (whether we are using standard delay only, or multiple delays -- 
+%      i.e. this is not the project covariance for embedded system Z
+%      if we are dealing with delays)
+%     for U = I - 1/N and
+%     \Omega is the covariance matrix of X (not Z), assuming the Ornstein-Uhlenbeck or VAR process.
+% - B - the matrix is just the C matrix is the case of no-delays (C is
+%     NxN), else if C is NxNx(tau+1), then each NxN matrix is embedded into
+%     B which is the connectivity matrix for the embedded system Z.
 % - err - error status from the call to work out the covariance matrix here
 %
 %% Linear Sync Toolkit (linsync)
@@ -27,13 +45,23 @@ function [sortedLambdasCU, UcovarianceU, err] = covarianceUGaussianNet(C, discre
 % Distributed under GNU General Public License v3
 
 
-n = size(C,1);
-I = eye(n);
-G = ones(n) / n;
+N = size(C,1);
+hasDelays = (length(size(C)) == 3);
+if (hasDelays)
+    tauPlus1 = size(C,3); % Number of delays we consider. If > 1 we're looking beyond standard case
+    if (~discreteTime)
+        error('We do not handle delays for continuous time yet');
+    end
+else
+    tauPlus1 = 1; % Only the standard delay here
+end
+% For system X:
+I = eye(N);
+G = ones(N) / N;
 U = I - G;
 
 if (nargin < 3)
-    maximumIterations = 1000;
+    maximumIterations = 1000; % This will be on the low side, should be setting something higher for proper experiments.
 end
 tol = 100; % Multiples of machine epsilon within which we want to consider a value to be zero.
 
@@ -49,22 +77,46 @@ if (nargin < 6)
     skipPowerSeriesConvergenceCheck = false;
 end
 
-% Compute eigenvalues of C * U:
-%  (since C is square, the eigenvalues are the same as C^T - i.e. it doesn't matter that they correspond to row/column vectors)
-lambdasCU = eig(C * U);
-sortedLambdasCU = sort(lambdasCU); % Sorts the elements by magnitude
+% Construct the embedded matrix B (if no delays B = C)
+B = zeros(N * tauPlus1);
+if hasDelays
+    for n = 1 : tauPlus1
+        % Insert the delayed coupling matrix C_{n-1} into B
+        B(1+(n-1)*N:n*N,1:N) = C(:,:,n);
+    end
+    % Insert I along the upper block diagonal
+    B(1:(tauPlus1-1)*N, N+1:end) = eye((tauPlus1-1) * N);
+    zLength = size(B,1);
+    IZ = eye(zLength);
+    IX = zeros(zLength);
+    IX(1:N,1:N) = I;
+    GX = [repmat(G, 1, tauPlus1); zeros(N*(tauPlus1-1), N*tauPlus1)];
+    UX = IZ - GX;
+else
+    B = C; % standard case B collapses to C
+end
+
+% Compute eigenvalues of C * U (no delays) or B * UX (delayed case):
+%  (since B is square, the eigenvalues are the same as B^T - i.e. it doesn't matter that they correspond to row/column vectors)
+if (hasDelays)
+    lambdasBU = eig(B * UX);
+else
+    lambdasBU = eig(C * U); % Would be equivalent to eig(B * UX); but stepping it out explicitly
+end
+
+sortedLambdasAfterProj = sort(lambdasBU); % Sorts the elements by magnitude
 % Find the minimum and maximum eigenvalues
-lambdaCUMax = sortedLambdasCU(size(sortedLambdasCU,1));
-    
-% Check for stationarity for C*U
+lambdaAfterProjMax = sortedLambdasAfterProj(size(sortedLambdasAfterProj,1));
+
+% Check for stationarity for B*U (generalised discrete) or C*U (continuous time)
 if (discreteTime)
-    if (abs(lambdaCUMax) >= 1)
+    if (abs(lambdaAfterProjMax) >= 1)
         % Non-stationary
         save('nonconvergentNetwork.mat', '-mat', 'C'); % save for later investigation
-        error('Discrete system with |\\lambda_CU_max| >= 1 (%.6f) i.e. non-stationary of C*U\n', abs(lambdaCUMax));
+        error('Discrete system with |\\lambda_BU_max| >= 1 (%.6f) i.e. non-stationary of C*U or B*U\n', abs(lambdaAfterProjMax));
     end
 else
-    sortedRealPartsOfLambdasCU = sort(real(lambdasCU));
+    sortedRealPartsOfLambdasCU = sort(real(lambdasBU));
     realLambdaCUMax = sortedRealPartsOfLambdasCU(size(sortedRealPartsOfLambdasCU,1));
     if (realLambdaCUMax >= 1)
         % Non-stationary
@@ -74,20 +126,26 @@ else
 end
 
 % Check for convergence of the projected covariance matrix: (same condition for both continuous and discrete):
-if  (~skipPowerSeriesConvergenceCheck && (abs(lambdaCUMax) >= 1))
+if  (~skipPowerSeriesConvergenceCheck && (abs(lambdaAfterProjMax) >= 1))
     save('nonconvergentNetwork.mat', 'C'); % save for later investigation
-    error('|\\lambda_CU_max| >= 1 (%.2f) implies that the U^T \\Omega U matrix will not converge.\n', abs(lambdaCUMax));
+    error('|\\lambda_CU_max| >= 1 (%.2f) implies that the U^T \\Omega U matrix will not converge.\n', abs(lambdaAfterProjMax));
 end
 
-% Check whether matrix C is symmetric or not, to help speed up the
+% Check whether matrix B is symmetric or not, to help speed up the
 % projected covariance calculation:
-symmetric = isempty(find(C - C' > tol*eps));
+symmetric = isempty(find(B - B' > tol*eps));
 
 % Now compute the UcovarianceU matrix
 if (discreteTime)
-    [UcovarianceU,err] = discreteCon2CovProjected(C,symmetric && ~forcePowerSeriesForSymmetric,maximumIterations,tol,verbose);
+    if (hasDelays)
+        % Case with delays
+        [UcovarianceXU,err] = discreteCon2CovProjectedWithDelays(B,maximumIterations,tol,verbose,N);
+    else
+        % Standard case without delays:
+        [UcovarianceXU,err] = discreteCon2CovProjected(B,symmetric && ~forcePowerSeriesForSymmetric,maximumIterations,tol,verbose);
+    end
 else
-    [UcovarianceU,err] = contCon2CovProjected(C,symmetric && ~forcePowerSeriesForSymmetric,maximumIterations,tol,verbose);
+    [UcovarianceXU,err] = contCon2CovProjected(C,symmetric && ~forcePowerSeriesForSymmetric,maximumIterations,tol,verbose);
 end
 
 % Can handle err == 2 here, or just let it go through to the caller

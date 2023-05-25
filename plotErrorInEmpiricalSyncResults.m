@@ -109,6 +109,7 @@ for pIndex = 1:length(paramsToRunThrough)
     hold on;
 end
 palette = jet (length(paramsToRunThrough));
+% palette = hsv (length(paramsToRunThrough)); % Good for smaller numbers of parameters on the plot
 for i =1:length(paramsToRunThrough)
     set(h(i),'color',palette(i,:))
 end

@@ -38,7 +38,7 @@ D = diag(sum(A));
 %  (notice how b-c is the self-weight, and c is the total
 %   weight from d other inputs, which each have c/d (where d might be different for each node).
 %   Equal weights c/d are not required by the maths, but used for simply experiments here.)
-C = zeros(N,N,tauPlus1);
+C = zeros(parameters.N,parameters.N,tauPlus1);
 C(:,:,1) = (parameters.b - parameters.c) .* I; % Self-connections at standard lag 1
 C(:,:,tauPlus1) = parameters.c .* A  / D;
 

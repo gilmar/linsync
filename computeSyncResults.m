@@ -55,7 +55,8 @@ rng(randSeed);
 
 %% Main loop over parameter we are sweeping whilst running experiments:
 for paramIndex = 1 : indices
-    fprintf('Param index %d:\n===============\n\n', paramIndex);
+    fprintf('Updating parameter %s(%d)=%.4f:\n===============\n\n', ...
+        parameters.tosweep, paramIndex, paramsToRunThrough(paramIndex));
 
     % Assign this particular parameter in the parameters object:
     parameters.(parameters.tosweep) = paramsToRunThrough(paramIndex);
@@ -68,7 +69,7 @@ for paramIndex = 1 : indices
             % Generate a new unweighted adjacency matrix A representing the network:
             fprintf('Generating matrix %d\n', r);
 
-            % Generate an unweighted network structure, without self-connections,
+            % Generate an unweighted NxN network structure, without self-connections,
             %  which we ensure is not *undirectionally* connected:
             % (hard coding these instead of allowing user to set them)
             parameters.allowSelf = false;
@@ -77,15 +78,16 @@ for paramIndex = 1 : indices
             A = feval(parameters.generateNetworkFunction, parameters);
 
             % Generate the weighted update matrix C from A (in row-vector form following Barnett).
+            % For the no-delay case, C is NxN, with delays it will be NxNx(tau+1)
             C = feval(parameters.weightTheNetworkFunction, A, parameters);
 
             % Generate the projected covariance matrix (UcovarianceU == U /Omega U) for it
-            [sortedLambdasCU, UcovarianceU, err] = covarianceUGaussianNet(C, discretized, MaxK, false, 1);
+            [sortedLambdasBU, UcovarianceXU, B, err] = covarianceUGaussianNet(C, discretized, MaxK, false, 1);
             % if err==2 then the UcovarianceU matrix failed to converge and we'll loop again
         end
 
         % compute <\sigma^2> (syncWidth) for this sample network
-        syncWidth = synchronizability(UcovarianceU) % Letting this print to std out for logging
+        syncWidth = synchronizability(UcovarianceXU) % Letting this print to std out for logging
         syncWidths(paramIndex, r) = syncWidth;
 
         % Now check what the sync width approximation by low order motifs looks like here:
@@ -95,7 +97,7 @@ for paramIndex = 1 : indices
         %       length u and m-u)
         for k = 1 : maxMotifLength
             % verbose = -1 to suppress warnings on lack of convergence, since we're only asking for a low order approximation
-            [~, UcovarianceUApprox, ~] = covarianceUGaussianNet(C, discretized, k, true, -1);
+            [~, UcovarianceUApprox, ~, ~] = covarianceUGaussianNet(C, discretized, k, true, -1);
             syncWidthApproxes(paramIndex, k, r) = synchronizability(UcovarianceUApprox);
         end
         
@@ -104,7 +106,7 @@ for paramIndex = 1 : indices
         if (S ~= 0)
             % The time samples are taken dt time units apart (for
             % continuous time)
-            empiricalCovarianceProjected = empiricalCovariancesProjected(C, discretized, S, dt);
+            empiricalCovarianceProjected = empiricalCovariancesProjected(B, N, discretized, S, dt);
         else
             % Don't run any empirical calculations:
             empiricalCovarianceProjected = 0;
@@ -116,11 +118,11 @@ for paramIndex = 1 : indices
         if (discretized)
             % For discrete time we want that with the largest magnitude. (should be < 1 for stability)
             % Not sure how the sort function treated complex values before, so re-sort:
-            sortedEigsByCriteria = sort(abs(sortedLambdasCU));
+            sortedEigsByCriteria = sort(abs(sortedLambdasBU));
         else
             % For continuous time we want that with the largest real component. (should be < 1 for stability)
             % Not sure how the sort function treated complex values before, so re-sort:
-            sortedEigsByCriteria = sort(real(sortedLambdasCU));
+            sortedEigsByCriteria = sort(real(sortedLambdasBU));
         end
         dominantEigenvalue = sortedEigsByCriteria(length(sortedEigsByCriteria));
         dominantEigenvalues(paramIndex, r) = dominantEigenvalue;
@@ -130,7 +132,7 @@ for paramIndex = 1 : indices
         
         % And finally check whether the weighted adjacency matrix was
         % diagonlizable:
-        diagonalizable(paramIndex, r) = isdiagonalizable(C);
+        diagonalizable(paramIndex, r) = isdiagonalizable(B);
 
         fprintf('Repeat %d for parameter(%d)=%.4f: sync_width=%.1f, empirical=%.1f, approx(1)=%.1f, approx(2)=%.1f, approx(3)=%.1f, lambda_1=%.4f, lambda_2=%.4f, isdiag=%d\n\n', ...
             r, paramIndex, paramsToRunThrough(paramIndex), syncWidth, empiricalSyncWidth, syncWidthApproxes(paramIndex, 1, r), syncWidthApproxes(paramIndex, 2, r), ...
