@@ -126,7 +126,7 @@ parameters.maxMotifLength = 50;
 
 % - folder - directory where all of the files are to be stored.
 if isCluster
-    parameters.folder = './results/N100-randRing-d4-b1.00-c0.50-dir-k50-cont/[@P1]';
+    parameters.folder = './results/N100-randRing-d4-b1.00-c0.50-dir-k50-disc/[@P1]';
 else
     parameters.folder = './results/';
 end
@@ -134,7 +134,7 @@ end
 % combineResultsFrom - in the case of a cluster run, we will want to combine
 %  the results which are in various files in folders under this folder.
 % They will be saved back to the parameters.folder above
-parameters.combineResultsFrom = '~/temp/sync/empirical/';
+parameters.combineResultsFrom = '~/temp/sync/empirical/N100-randRing-d4-b1.00-c0.50-p1.0000-sweep_p-dir-k50-disc/';
 
 % MaxK - maximum number of iterations for solving the power series for the
 % covariance matrix.
