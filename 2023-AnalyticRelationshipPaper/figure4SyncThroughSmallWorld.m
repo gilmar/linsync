@@ -103,5 +103,5 @@ plotSyncResults(parameters);
 print('-depsc', [parameters.folder, 'fig4f.eps'])
 saveas(gca, [parameters.folder, 'fig4f.fig'], 'fig');
 
-fprintf('All experiments finished, using %d network samples (is this the same as the 1000 used for the paper?)\n', ...
+fprintf('All experiments finished, using %d network samples (is this the same as the 2000 used for the paper?)\n', ...
     parameters.repeats);

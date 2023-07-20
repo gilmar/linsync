@@ -45,8 +45,8 @@ end
 %% Now plot the results:
 plotErrorInEmpiricalSyncResults(parameters);
 figure(2); % Select the correct plot we're keeping
-print('-depsc', [parameters.folder, 'exp1.eps'])
-saveas(gca, [parameters.folder, 'exp1.fig'], 'fig');
+print('-depsc', [parameters.folder, '/exp1.eps'])
+saveas(gca, [parameters.folder, '/exp1.fig'], 'fig');
 
 fprintf('Experiment 1 finished, using %d network samples (is this the same as the 2000 used for the paper?)\n', ...
     parameters.repeats);
