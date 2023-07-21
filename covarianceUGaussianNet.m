@@ -44,16 +44,12 @@ function [sortedLambdasAfterProj, UcovarianceXU, B, err] = covarianceUGaussianNe
 % Copyright (C) 2023 Joseph T. Lizier
 % Distributed under GNU General Public License v3
 
-
 N = size(C,1);
 hasDelays = (length(size(C)) == 3);
 if (hasDelays)
-    tauPlus1 = size(C,3); % Number of delays we consider. If > 1 we're looking beyond standard case
     if (~discreteTime)
         error('We do not handle delays for continuous time yet');
     end
-else
-    tauPlus1 = 1; % Only the standard delay here
 end
 % For system X:
 I = eye(N);
@@ -78,22 +74,14 @@ if (nargin < 6)
 end
 
 % Construct the embedded matrix B (if no delays B = C)
-B = zeros(N * tauPlus1);
+B = embedNetworkWithDelays(C);
 if hasDelays
-    for n = 1 : tauPlus1
-        % Insert the delayed coupling matrix C_{n-1} into B
-        B(1+(n-1)*N:n*N,1:N) = C(:,:,n);
-    end
-    % Insert I along the upper block diagonal
-    B(1:(tauPlus1-1)*N, N+1:end) = eye((tauPlus1-1) * N);
     zLength = size(B,1);
     IZ = eye(zLength);
-    IX = zeros(zLength);
-    IX(1:N,1:N) = I;
+    % IX = zeros(zLength); % not required later
+    % IX(1:N,1:N) = I; % not required later
     GX = [repmat(G, 1, tauPlus1); zeros(N*(tauPlus1-1), N*tauPlus1)];
-    UX = IZ - GX;
-else
-    B = C; % standard case B collapses to C
+    UX = IZ - GX; % not required later
 end
 
 % Compute eigenvalues of C * U (no delays) or B * UX (delayed case):
@@ -133,7 +121,7 @@ end
 
 % Check whether matrix B is symmetric or not, to help speed up the
 % projected covariance calculation:
-symmetric = isempty(find(B - B' > tol*eps));
+symmetric = isempty(find(B - B' > tol*eps, 1));
 
 % Now compute the UcovarianceU matrix
 if (discreteTime)
