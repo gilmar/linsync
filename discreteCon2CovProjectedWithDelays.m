@@ -82,14 +82,22 @@ UX = IZ - GX;
 UcovarianceXU = (U' * U);
 leftComponent = UX';
 % rightComponent = UX;
-leftMultiplier = UX' * B';
+% leftMultiplier = UX' * B';
 % rightMultiplier = B * UX;
+
+% B can have a good sparse representation because of the many zeroes re the lags
+BTsparse = sparse(B');
 
 for i = 1:maxi
     % d_UcovarianceU holds the previous term added in (for i > 1)
     % UcovarianceXU holds the sum of previous projected terms
-    leftComponent = leftMultiplier * leftComponent; % Order of multiplication here important for delays (it was not for no delay)
-    % rightComponent = rightComponent * rightMultiplier; % It's just leftComponent'
+    % leftComponent = leftMultiplier * leftComponent; % Order of multiplication here important for delays (it was not for no delay)
+    % % rightComponent = rightComponent * rightMultiplier; % It's just leftComponent'
+    % Try this a faster way: sparse multiplication from B^T first, then
+    % remove column averages for the U^T left multiplication:
+    leftComponent = BTsparse * leftComponent;
+    leftComponent = leftComponent - repmat(mean(leftComponent), zLength, 1);
+
     % We want: d_UcovarianceXU = (leftComponent * IX * rightComponent)(1:N,1:N); so
     % So: d_UcovarianceXU = (leftComponent(1:N,:) * IX * rightComponent(:,1:N));
     % But only IX(1:N,1:N) is non-zero so: d_UcovarianceXU = (leftComponent(1:N,1:N) * rightComponent(1:N,1:N));
