@@ -66,14 +66,14 @@ so you would be advised to run for more repeats in parallel fashion as per the
 In any case, running 10 repeats only gives a good idea of the main trends already,
 though there are some fluctuations / std error differences compared to the longer runs.
 
-## Figure S2 / 6 - convergence of numerical results from simulations - discrete time
+## Figure S1 / 5 - convergence of numerical results from simulations - discrete time
 
-The parameter settings for recreating figure 6 / S2 are contained in `figure6S2Parameters.m`.
+The parameter settings for recreating figure 5 / S1 are contained in `figure6S1Parameters.m`.
 
-The script to run the experiments is `figure6S2ConvergenceOfSimulationsDiscrete.m`.
+The script to run the experiments is `figure5S1ConvergenceOfSimulationsDiscrete.m`.
 Run that script in Matlab from this folder:
 ```matlab
-figure6S2ConvergenceOfSimulationsDiscrete
+figure5S1ConvergenceOfSimulationsDiscrete
 ```
 
 An `.eps` and `.fig` file is saved for the figure.
@@ -98,10 +98,10 @@ To run this on a cluster, first set up your cluster environment as per the
 [cluster instructions](/cluster).
 
 Then following the basic steps outlined there to get an experiment running:
-1. Copy `figure6S2Parameters.m` here over the top of `cluster/parameters.m`,
+1. Copy `figure6S1Parameters.m` here over the top of `cluster/parameters.m`,
 1. From your shell environment run `runManyProcesses.sh 1 1 200`
 and then follow the other instructions at the [cluster instructions](/cluster)
 page to combine the results together etc.
 
-They can be then plotted as shown towards the end of `figure6S2ConvergenceOfSimulationsDiscrete`.
+They can be then plotted as shown towards the end of `figure5S1ConvergenceOfSimulationsDiscrete`.
 
