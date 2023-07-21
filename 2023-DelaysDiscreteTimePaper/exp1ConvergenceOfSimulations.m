@@ -1,6 +1,6 @@
 % Compute <sigma^2> analytically and from numerical simulations
 % for discrete-time VAR process through a small-world
-% transition, with standard interaction delay.
+% transition, with fixed interaction delays.
 %
 %
 %% Linear Sync Toolkit (linsync)
@@ -10,7 +10,7 @@
 %% Preliminaries:
 
 % Load in the parameters object:
-exp1Parameters;
+exp2Parameters;
 
 % Add the toolkit to the path:
 addpath(parameters.syncToolkitPath);
@@ -26,28 +26,34 @@ end
 
 % To speed up the experiment when not on a cluster you can set:
 parameters.repeats = 10; % instead of 2000
-parameters.S = [100, 1000, 10000, 100000]; % Removing the longest runs
+parameters.S = [100, 1000, 10000]; % Removing the 2 longest runs
 parameters.SRangeToPlot = parameters.S;
 % You can get a decent idea of the main trends for this number already,
 % though there are significant fluctuations / std error differences
 % compared to the longer runs.
 
-%% Experiment 1 and plots:
+%% Experiment 2 and plots:
 % Here, the numerical simulations are the limiting factor
 for S = parameters.SRangeToPlot
     parameters.S = S;
     computeSyncResults(parameters);
 end
-% Takes about 3 mins on my machine for 10 repeats for S = [100,1000,10000,100000]
+% Takes about 45-50 mins on my machine for 10 repeats for S = [100,1000,10000,100000]
 % will take much longer for 2000 repeats and S up to 1000000 -- 
 % Better to do on cluster for that many.
 
 %% Now plot the results:
 plotErrorInEmpiricalSyncResults(parameters);
 figure(2); % Select the correct plot we're keeping
-print('-depsc', [parameters.folder, '/exp1.eps'])
-saveas(gca, [parameters.folder, '/exp1.fig'], 'fig');
+print('-depsc', [parameters.folder, '/exp2.eps'])
+saveas(gca, [parameters.folder, '/exp2.fig'], 'fig');
 
-fprintf('Experiment 1 finished, using %d network samples (is this the same as the 2000 used for the paper?)\n', ...
+% And take a look at how <sigma^2> varies as the fixed delay increases
+% here:
+plotSyncResults(parameters);
+print('-depsc', [parameters.folder, '/exp2b-sigma_vs_tau.eps'])
+saveas(gca, [parameters.folder, '/exp2b-sigma_vs_tau.fig'], 'fig');
+
+fprintf('Experiment 2 finished, using %d network samples (is this the same as the 2000 used for the paper?)\n', ...
     parameters.repeats);
 

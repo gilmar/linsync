@@ -1,4 +1,4 @@
-%% Script to set up the parameters object for experiment 2 (d=4, c=0.5, p=0.02, sweeping tau, L)  in discrete time.
+%% Script to set up the parameters object for experiment 1 (d=4, c=0.5, various p, L) in discrete time.
 % You can not only assign values here, but have differential processing
 % (e.g. to do different things on your desktop or cluster).
 % Required members are described as they appear below.
@@ -76,7 +76,7 @@ parameters.generateNetworkFunction = 'generateNewRandomRingMatrix';
 % - p - is interpreted as either: connection probability for rand or randFixedD
 %   (disconnected networks are rejected), or rewiring probability for randRing
 % Can be an array (instead of c), such that we will run over all values of p.
-parameters.p = 0.02;
+parameters.p = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0];
 
 % - d - degree for randRing network type. d/2 links on either side of the
 %   node.
@@ -94,16 +94,14 @@ parameters.weightTheNetworkFunction = 'weightNetworkStandardWithFixedDelay';
 % discrete time at the moment). The parameter defines an extra delay \tau
 % beyond the standard delay, so setting this to 0 defaults behaviour to 
 % standard Markovian discrete-time delay of 1 step.
-parameters.delay_fixedCross = 0:3;
+parameters.delay_fixedCross = 0;
 
 % - tosweep - define which of the parameters we will sweep along when we
 %   run computeSyncResults. Should be named without 'parameters.' at the
 %   start
-parameters.tosweep = 'delay_fixedCross';
-% parameters.tosweep = 'p';
+parameters.tosweep = 'p';
 % - tosweep_label - short label for the toweep parameter for plots
-parameters.tosweep_label = '\tau';
-% parameters.tosweep_label = 'p';
+parameters.tosweep_label = 'p';
 
 % - S - number of samples for the empirical calculation
 %   (known as L in our first sync paper). Need very large
@@ -128,15 +126,15 @@ parameters.maxMotifLength = 50;
 
 % - folder - directory where all of the files are to be stored.
 if isCluster
-    parameters.folder = './results/N100-randRing-d4-b1.00-c0.50-p1.0000-sweep_delay_fixedCross-dir-k50-disc/[@P1]';
+    parameters.folder = './results/N100-randRing-d4-b1.00-c0.50-dir-k50-disc/[@P1]';
 else
-    parameters.folder = './results/N100-randRing-d4-b1.00-c0.50-p1.0000-sweep_delay_fixedCross-dir-k50-disc';
+    parameters.folder = './results/';
 end
 
 % combineResultsFrom - in the case of a cluster run, we will want to combine
 %  the results which are in various files in folders under this folder.
 % They will be saved back to the parameters.folder above
-parameters.combineResultsFrom = '~/temp/sync/empirical/N100-randRing-d4-b1.00-c0.50-p1.0000-sweep_delay_fixedCross-dir-k50-disc';
+parameters.combineResultsFrom = '~/temp/sync/empirical/N100-randRing-d4-b1.00-c0.50-p1.0000-sweep_p-dir-k50-disc/';
 
 % MaxK - maximum number of iterations for solving the power series for the
 % covariance matrix.
