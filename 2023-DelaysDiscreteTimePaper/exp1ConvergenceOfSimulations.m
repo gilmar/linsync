@@ -32,7 +32,7 @@ parameters.SRangeToPlot = parameters.S;
 % though there are significant fluctuations / std error differences
 % compared to the longer runs.
 
-%% Experiment 2 and plots:
+%% Experiment 1 and plots:
 % Here, the numerical simulations are the limiting factor
 for S = parameters.SRangeToPlot
     parameters.S = S;
@@ -50,6 +50,8 @@ saveas(gca, [parameters.folder, '/exp1.fig'], 'fig');
 
 % And take a look at how <sigma^2> varies as the fixed delay increases
 % here:
+% (You can manually remove the \simga^2_{emp} series from the plot since
+% it's not necessarily the largest S)
 plotSyncResults(parameters);
 print('-depsc', [parameters.folder, '/exp1b-sigma_vs_tau.eps'])
 saveas(gca, [parameters.folder, '/exp1b-sigma_vs_tau.fig'], 'fig');
