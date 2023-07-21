@@ -10,7 +10,7 @@
 %% Preliminaries:
 
 % Load in the parameters object:
-exp2Parameters;
+exp1Parameters;
 
 % Add the toolkit to the path:
 addpath(parameters.syncToolkitPath);
@@ -45,15 +45,15 @@ end
 %% Now plot the results:
 plotErrorInEmpiricalSyncResults(parameters);
 figure(2); % Select the correct plot we're keeping
-print('-depsc', [parameters.folder, '/exp2.eps'])
-saveas(gca, [parameters.folder, '/exp2.fig'], 'fig');
+print('-depsc', [parameters.folder, '/exp1.eps'])
+saveas(gca, [parameters.folder, '/exp1.fig'], 'fig');
 
 % And take a look at how <sigma^2> varies as the fixed delay increases
 % here:
 plotSyncResults(parameters);
-print('-depsc', [parameters.folder, '/exp2b-sigma_vs_tau.eps'])
-saveas(gca, [parameters.folder, '/exp2b-sigma_vs_tau.fig'], 'fig');
+print('-depsc', [parameters.folder, '/exp1b-sigma_vs_tau.eps'])
+saveas(gca, [parameters.folder, '/exp1b-sigma_vs_tau.fig'], 'fig');
 
-fprintf('Experiment 2 finished, using %d network samples (is this the same as the 2000 used for the paper?)\n', ...
+fprintf('Experiment 1 finished, using %d network samples (is this the same as the 2000 used for the paper?)\n', ...
     parameters.repeats);
 
