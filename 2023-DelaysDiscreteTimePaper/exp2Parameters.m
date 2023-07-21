@@ -1,4 +1,4 @@
-%% Script to set up the parameters object for the figure 1 experiment (d=4, c=0.5, various p, L).
+%% Script to set up the parameters object for experiment 2 (d=4, c=0.5, p=0.02, sweeping tau, L)  in discrete time.
 % You can not only assign values here, but have differential processing
 % (e.g. to do different things on your desktop or cluster).
 % Required members are described as they appear below.

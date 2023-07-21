@@ -13,7 +13,7 @@ The parameter settings for recreating experiment 1 are contained in `exp1Paramet
 The script to run the experiments is `exp1ConvergenceOfSimulations.m`.
 Run that script in Matlab from this folder:
 ```matlab
-figure1ConvergenceOfSimulations
+exp1ConvergenceOfSimulations
 ```
 
 An `.eps` and `.mat` file is saved for the figure.
@@ -43,6 +43,8 @@ Then following the basic steps outlined there to get an experiment running:
 and then follow the other instructions at the [cluster instructions](/cluster)
 page to combine the results together etc.
 
+They can be then plotted as shown towards the end of `exp1ConvergenceOfSimulations`.
+
 ## Experiment 2 - convergence of numerical results from simulations - discrete time, fixed delays
 
 The parameter settings for recreating experiment 2 are contained in `exp2Parameters.m`.
@@ -50,7 +52,7 @@ The parameter settings for recreating experiment 2 are contained in `exp2Paramet
 The script to run the experiments is `exp2ConvergenceOfSimulations.m`.
 Run that script in Matlab from this folder:
 ```matlab
-figure2ConvergenceOfSimulations
+exp2ConvergenceOfSimulations
 ```
 
 An `.eps` and `.mat` file is saved for the figure.
@@ -81,3 +83,4 @@ page to combine the results together etc.
 
 For the saved plot here I altered the use of `jet` palette to `hsv` in .
 
+They can be then plotted as shown towards the end of `exp2ConvergenceOfSimulations`.
