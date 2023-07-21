@@ -47,9 +47,12 @@ function [sortedLambdasAfterProj, UcovarianceXU, B, err] = covarianceUGaussianNe
 N = size(C,1);
 hasDelays = (length(size(C)) == 3);
 if (hasDelays)
+    tauPlus1 = size(C,3); % Number of delays we consider. If > 1 we're looking beyond standard case
     if (~discreteTime)
         error('We do not handle delays for continuous time yet');
     end
+else
+    tauPlus1 = 1; % Only the standard delay here
 end
 % For system X:
 I = eye(N);
