@@ -25,6 +25,10 @@ end
 addpath(parameters.syncToolkitPath);
 
 fprintf('Beginning calculation of sync results for folder %s\n', parameters.folder);
+if isempty(parameters.SRangeToPlot)
+    fprintf('No values of parameters.SRangeToPlot to run experiments for -- assigning S=0 automatically\n');
+    parameters.SRangeToPlot = 0;
+end
 
 for S = parameters.SRangeToPlot
     tic
