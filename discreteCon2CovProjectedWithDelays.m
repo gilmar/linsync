@@ -20,7 +20,7 @@ function [UcovarianceXU,err] = discreteCon2CovProjectedWithDelays(B,maxi,tol,ver
 %     Z(t+1) = Z(t)*B + R_X(t)
 %
 % where X(t) is the first N components of Z(t) (rest are embedded values of
-% X(t), and
+% X(t)), and
 % where R_X(t) is uncorrelated mean-zero unit-variance Gaussian noise
 %  for the first N terms and zero otherwise,
 %  and B is the update matrix for the system Z.
@@ -80,29 +80,38 @@ UX = IZ - GX;
 % UcovarianceXU = (UX' * IX * UX)(1:N,1:N); % Initialised for u=0 in the sum
 % So: UcovarianceXU = (U' * IX(1:N,1:N) * U);
 UcovarianceXU = (U' * U);
-leftComponent = UX';
+% leftComponent = UX';
 % rightComponent = UX;
+rightComponentFirstBlockCol = UX(:,1:N); % First N-block column of right component
 % leftMultiplier = UX' * B';
 % rightMultiplier = B * UX;
 
-% B can have a good sparse representation because of the many zeroes re the lags
-BTsparse = sparse(B');
+% B should have a good sparse representation because of the many zeroes re the lags
+Bsparse = sparse(B);
+% BTsparse = sparse(B');
 
 for i = 1:maxi
     % d_UcovarianceU holds the previous term added in (for i > 1)
     % UcovarianceXU holds the sum of previous projected terms
-    % leftComponent = leftMultiplier * leftComponent; % Order of multiplication here important for delays (it was not for no delay)
-    % % rightComponent = rightComponent * rightMultiplier; % It's just leftComponent'
-    % Try this a faster way: sparse multiplication from B^T first, then
-    % remove column averages for the U^T left multiplication:
-    leftComponent = BTsparse * leftComponent;
-    leftComponent = leftComponent - repmat(mean(leftComponent), zLength, 1);
+    %
+    % Try this a faster way:
+    %  leftComponent should be U^T (B^i)^T = U^T B^T^i = U^T (B^T)^(i-1) B^T
+    %  So we can just right sparse multiply by B, and no need to apply U
+    %  again.
+    % leftComponent = leftComponent * BTsparse;
+    % rightComponent = rightComponent * rightMultiplier; % It's just leftComponent'
+    %
+    % Faster again: we only need to maintain the first N-block column of rightComponent
+    %  or first N-block row of leftComponent, because these are all that is
+    %  ever used to update the top left NxN block (which is all we need for
+    %  UcovarianceXU:
+    rightComponentFirstBlockCol = Bsparse * rightComponentFirstBlockCol;
 
     % We want: d_UcovarianceXU = (leftComponent * IX * rightComponent)(1:N,1:N); so
     % So: d_UcovarianceXU = (leftComponent(1:N,:) * IX * rightComponent(:,1:N));
     % But only IX(1:N,1:N) is non-zero so: d_UcovarianceXU = (leftComponent(1:N,1:N) * rightComponent(1:N,1:N));
-    % And rightComponent is just the transpose of the left component:
-    d_UcovarianceXU = (leftComponent(1:N,1:N) * (leftComponent(1:N,1:N)'));
+    % And leftComponent is just the transpose of rightComponent:
+    d_UcovarianceXU = (rightComponentFirstBlockCol(1:N,:)' * rightComponentFirstBlockCol(1:N,:));
     if (mod(i, 100) == 0) && negligible(d_UcovarianceXU,UcovarianceXU,tol)
         % Save time on calls to negligible by only checking every 100 steps
         break
