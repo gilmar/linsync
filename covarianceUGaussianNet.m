@@ -28,7 +28,9 @@ function [sortedLambdasAfterProj, UcovarianceXU, B, err] = covarianceUGaussianNe
 % 
 % Outputs
 % - sortedLambdasAfterProj - sorted eigenvalues of CU (if C is NxN) or 
-%    BU (if including delays), (from smallest to largest magnitude if complex)
+%    BU (if including delays), (from smallest to largest magnitude if
+%    complex). If discreteTime then only return the top two eigenvalues by
+%    magnitude; if ~discreteTime we return all.
 % - UcovarianceXU - projected covariance matrix U^T \Omega_X U, of system X
 %     (whether we are using standard delay only, or multiple delays -- 
 %      i.e. this is not the project covariance for embedded system Z
@@ -90,13 +92,15 @@ end
 % Compute eigenvalues of C * U (no delays) or B * UX (delayed case):
 %  (since B is square, the eigenvalues are the same as B^T - i.e. it doesn't matter that they correspond to row/column vectors)
 if (hasDelays)
-    lambdasBU = eig(B * UX);
+    lambdasBU = eigs(B * UX, 2); % Only top 2 magnitude eigenvalues required for discrete time (which hasDelays implies)
+elseif (discreteTime)
+    lambdasBU = eigs(C * U, 2); % Would be equivalent to eig(B * UX, 2); but stepping it out explicitly
 else
-    lambdasBU = eig(C * U); % Would be equivalent to eig(B * UX); but stepping it out explicitly
+    lambdasBU = eig(C * U); % Need all eigenvectors for continuous time
 end
 
 sortedLambdasAfterProj = sort(lambdasBU); % Sorts the elements by magnitude
-% Find the minimum and maximum eigenvalues
+% Find the maximum eigenvalue
 lambdaAfterProjMax = sortedLambdasAfterProj(size(sortedLambdasAfterProj,1));
 
 % Check for stationarity for B*U (generalised discrete) or C*U (continuous time)
