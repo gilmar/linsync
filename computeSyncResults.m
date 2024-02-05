@@ -97,7 +97,7 @@ for paramIndex = 1 : indices
         %       length u and m-u)
         for k = 1 : maxMotifLength
             % verbose = -1 to suppress warnings on lack of convergence, since we're only asking for a low order approximation
-            [~, UcovarianceUApprox, ~, ~] = covarianceUGaussianNet(C, discretized, k, true, -1);
+            [~, UcovarianceUApprox, ~, ~] = covarianceUGaussianNet(C, discretized, k, true, -1, true);
             syncWidthApproxes(paramIndex, k, r) = synchronizability(UcovarianceUApprox);
         end
         
@@ -145,6 +145,7 @@ for paramIndex = 1 : indices
         mean(syncWidthApproxes(paramIndex, 2, :)), mean(syncWidthApproxes(paramIndex, 3, :)), ...
         mean(dominantEigenvalues(paramIndex,:)), mean(secondEigenvalues(paramIndex,:)), ...
         mean(diagonalizable(paramIndex, :)));
+    toc
 end                
 
 %% Save the processed results here:
