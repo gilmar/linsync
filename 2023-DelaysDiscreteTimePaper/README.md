@@ -6,14 +6,14 @@ J.T. Lizier, F.M. Atay, and J. Jost,
 _"TBA"_,
 2023
 
-## Experiment 2 - convergence of numerical results from simulations - discrete time, fixed delays
+## Experiment 1 - convergence of numerical results from simulations - discrete time, fixed delays
 
-The parameter settings for recreating experiment 2 are contained in `exp2Parameters.m`.
+The parameter settings for recreating experiment 1 are contained in `exp1Parameters.m`.
 
-The script to run the experiments is `exp2ConvergenceOfSimulations.m`.
+The script to run the experiments is `exp1ConvergenceOfSimulations.m`.
 Run that script in Matlab from this folder:
 ```matlab
-exp2ConvergenceOfSimulations
+exp1ConvergenceOfSimulations
 ```
 
 An `.eps` and `.fig file is saved for the figure.
@@ -37,11 +37,11 @@ To run this on a cluster, first set up your cluster environment as per the
 [cluster instructions](/cluster).
 
 Then following the basic steps outlined there to get an experiment running:
-1. Copy `exp2Parameters.m` here over the top of `cluster/parameters.m`,
+1. Copy `exp1Parameters.m` here over the top of `cluster/parameters.m`,
 1. From your shell environment run `runManyProcesses.sh 1 1 200`
 and then follow the other instructions at the [cluster instructions](/cluster)
 page to combine the results together etc.
 
 For the saved plot here I altered the use of `jet` palette to `hsv` in .
 
-They can be then plotted as shown towards the end of `exp2ConvergenceOfSimulations`.
+They can be then plotted as shown towards the end of `exp1ConvergenceOfSimulations`.

@@ -34,7 +34,7 @@ Now we will submit 200 cluster jobs running `runComputeSyncResults.m` via `start
 ./runManyProcesses.sh 1 1 200
 ```
 
-Then we wait -- each job should take 2-3 hours, but may take longer to reach the head of the queue.
+Then we wait -- each job should take 2-3 hours (for the above parameters file -- different for others!), but may take longer to reach the head of the queue.
 
 Once all the jobs are finished, you should have mat files for each value of `S` in folders `1` through `200`
 under your results folder.
