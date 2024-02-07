@@ -14,28 +14,16 @@ function combineSyncResults(parameters)
 % Copyright (C) 2023 Joseph T. Lizier
 % Distributed under GNU General Public License v3
 
-if ischar(parameters)
-    % Assume that this string contains a filename which when run will load
-    % a properties object for this run
-    eval(['run ', parameters]);
-end
-% Postcondition: parameters are in the parameters object
+% Parse the vargin to have each parameter in its own variable (See list
+% above), and to have parameters defined.
+parseParameters;
+% Note: be careful not to refer to parameters until referring to a member
+% of it, else on the cluster if we have parameters.m defined, Matlab can
+% think that we're referring to that (weird error)
 
 addpath(parameters.syncToolkitPath);
 
 fprintf('Beginning combining sync results from dir %s into %s\n', parameters.combineResultsFrom, parameters.folder);
-
-% Generate string for the boolean arguments ready for file names
-if (parameters.undirected)
-    undirString = 'un';
-else
-    undirString = 'dir';
-end
-if (parameters.discretized)
-    discString = 'disc';
-else
-    discString = 'cont';
-end
 
 % Pull out the array of parameters that we will sweep through here:
 paramsToRunThrough = parameters.(parameters.tosweep);
@@ -113,7 +101,8 @@ for s = parameters.SRangeToPlot
         mkdir(parameters.folder);
     end
     combinedFilename = [parameters.folder, '/', fileNameSuffix, '.mat'];
-    save(combinedFilename, '-mat', 'N', 'd', 'b', 'c', 'p', 'undirected', 'maxMotifLength', 'discretized', ...
+    save(combinedFilename, '-mat', 'N', 'd', 'b', 'c', 'p', 'undirected', ...
+         'motifLengthsToCheck', 'maxMotifLength', 'discretized', ...
          'networkType', 'paramsToRunThrough', 'S', 'repeats', ...
          'syncWidths', 'syncWidthApproxes', 'syncWidthEmpirical', ...
          'dominantEigenvalues', 'secondEigenvalues', 'parameters');

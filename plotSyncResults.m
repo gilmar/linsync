@@ -1,6 +1,6 @@
 function plotSyncResults(varargin)
-%% function plotSyncResults(N, b, c, undirected, discretized, repeats, networkType, p, d, S, maxMotifLength, folder, MaxK, dt)
-% function plotSyncResults(parameters)
+%% function plotSyncResults(parameters)
+% function plotSyncResults(N, b, c, undirected, discretized, repeats, networkType, p, d, S, maxMotifLength, folder, MaxK, dt)
 %
 % Plot the synchronisation versus one parameter for a number of network samples
 %  (discrete time AR or continuous time Ornstein-Uhlenbeck specified in input).
@@ -29,19 +29,6 @@ parseParameters;
 
 tic;
 
-% Generate string for the boolean arguments ready for file names
-if (undirected)
-    undirString = 'un';
-else
-    undirString = 'dir';
-end
-if (discretized)
-    discString = 'disc';
-    deltaT = 1; % The natural time step
-else
-    discString = 'cont';
-end
-
 % Pull out the array of parameters that we will sweep through here:
 paramsToRunThrough = parameters.(parameters.tosweep);
 % But replace the swept parameter with its final value (for generating the
@@ -56,7 +43,8 @@ fileNamePrefix = sprintf('%s/N%d-%s%s-b%.2f-c%.2f-p%.4f-sweep_%s-%s-k%d-%s-S%d-r
             folder, parameters.N, networkType, netTypeSuffix, parameters.b, parameters.c, parameters.p, ...
             parameters.tosweep, undirString, maxMotifLength, discString, S, repeats);
 try
-    load([fileNamePrefix, '.mat'], '-mat', 'N', 'd', 'b', 'c', 'p', 'undirected', 'maxMotifLength', 'discretized', ...
+    load([fileNamePrefix, '.mat'], '-mat', 'N', 'd', 'b', 'c', 'p', 'undirected', ...
+        'motifLengthsToCheck', 'maxMotifLength', 'discretized', ...
         'networkType', 'paramsToRunThrough', 'S', 'repeats', ...
         'syncWidths', 'syncWidthApproxes', 'syncWidthEmpirical', ...
         'dominantEigenvalues', 'secondEigenvalues');
@@ -124,29 +112,29 @@ h7 = errorbar(paramsToRunThrough, avSecondEigenvalues ./ eigenvaluesNormaliser, 
     stdSecondEigenvalues ./ eigenvaluesNormaliser, ...
     'ms', 'markersize', 10);
 yyaxis left;
-if (discretized)
-    % Default: print the cummulative first three terms in the sum
-    ordersToPlot = [1,2,3];
+if (length(motifLengthsToCheck) > 3)
+    % Legacy - we will take the following items to plot from the
+    % motifLengthsToCheck array:
+    indicesOfApproxesToPlot = [2,10,50];
 else
-    % Default: print the cummulative 2nd, 3rd and fourth terms in the sum
-    % ordersToPlot = [2,3,4];
-    ordersToPlot = [2,10,50];
+    % We'll just take first 3 items:
+    indicesOfApproxesToPlot = [1,2,3];
 end
 % h2 = semilogx(paramsToRunThrough, avSyncWidthApproxes(ordersToPlot(1),:) ./ syncWidthsNormaliser, 'bo', 'markersize', 10); % Normalise to the total sync width
-h2 = errorbar(paramsToRunThrough, avSyncWidthApproxes(ordersToPlot(1),:) ./ syncWidthsNormaliser, ...
-    stdSyncWidthApproxes(ordersToPlot(1),:) ./ syncWidthsNormaliser, ...
+h2 = errorbar(paramsToRunThrough, avSyncWidthApproxes(indicesOfApproxesToPlot(1),:) ./ syncWidthsNormaliser, ...
+    stdSyncWidthApproxes(indicesOfApproxesToPlot(1),:) ./ syncWidthsNormaliser, ...
     'bo', 'markersize', 10);
 % h3 = semilogx(paramsToRunThrough, avSyncWidthApproxes(ordersToPlot(2),:) ./ syncWidthsNormaliser, 'go', 'markersize', 10); % Normalise to the total sync width
-h3 = errorbar(paramsToRunThrough, avSyncWidthApproxes(ordersToPlot(2),:) ./ syncWidthsNormaliser, ...
-    stdSyncWidthApproxes(ordersToPlot(2),:) ./ syncWidthsNormaliser, ...
+h3 = errorbar(paramsToRunThrough, avSyncWidthApproxes(indicesOfApproxesToPlot(2),:) ./ syncWidthsNormaliser, ...
+    stdSyncWidthApproxes(indicesOfApproxesToPlot(2),:) ./ syncWidthsNormaliser, ...
     'go', 'markersize', 10);
 % h4 = semilogx(paramsToRunThrough, avSyncWidthApproxes(ordersToPlot(3),:) ./ syncWidthsNormaliser, 'co', 'markersize', 10); % Normalise to the total sync width
-h4 = errorbar(paramsToRunThrough, avSyncWidthApproxes(ordersToPlot(3),:) ./ syncWidthsNormaliser, ...
-    stdSyncWidthApproxes(ordersToPlot(3),:) ./ syncWidthsNormaliser, ...
+h4 = errorbar(paramsToRunThrough, avSyncWidthApproxes(indicesOfApproxesToPlot(3),:) ./ syncWidthsNormaliser, ...
+    stdSyncWidthApproxes(indicesOfApproxesToPlot(3),:) ./ syncWidthsNormaliser, ...
     'co', 'markersize', 10);
 % syncWidthApproxLabels = {'\left\langle \sigma_2 \right\rangle', '\left\langle \sigma_3 \right\rangle', '\left\langle \sigma_4 \right\rangle'};
-syncWidthApproxLabels = {sprintf('< \\sigma^2_{%d} >', ordersToPlot(3)), ...
-    sprintf('< \\sigma^2_{%d} >', ordersToPlot(2)), sprintf('< \\sigma^2_{%d} >', ordersToPlot(1))};
+syncWidthApproxLabels = {sprintf('< \\sigma^2_{%d} >', motifLengthsToCheck(3)), ...
+    sprintf('< \\sigma^2_{%d} >', motifLengthsToCheck(2)), sprintf('< \\sigma^2_{%d} >', motifLengthsToCheck(1))};
 if (S > 0)
     % Add the empirical results:
     % h5 = semilogx(paramsToRunThrough, avSyncWidthsEmpirical ./ syncWidthsNormaliser, 'm+', 'markersize', 10); % Normalise to the total sync width
@@ -179,7 +167,8 @@ end
 xlabel(parameters.tosweep_label);
 a = axis;
 % Hard code the sigma^2 limits based on the max deviation from sync
-a(3:4) = [0, avSyncWidths(1) ./ syncWidthsNormaliser * 1.2];
+maxAvSyncWidth = max(avSyncWidths);
+a(3:4) = [0, maxAvSyncWidth ./ syncWidthsNormaliser * 1.2];
 maxForSigma = a(4); % Max y value on sigma^2 axis
 if (strcmp('p', parameters.tosweep))
     % Put a bit of space on the side of the axes
@@ -195,8 +184,9 @@ yyaxis right
 a = axis;
 % Work out the max value on second axis to make
 %  the first points on each line up:
-maxForEigenvalues = avDominantEigenvalues(1) ./ eigenvaluesNormaliser ...
-    .* maxForSigma ./ (avSyncWidths(1) ./ syncWidthsNormaliser);
+maxAvDomimantEigenvalue = max(avDominantEigenvalues);
+maxForEigenvalues = maxAvDomimantEigenvalue ./ eigenvaluesNormaliser ...
+    .* maxForSigma ./ (maxAvSyncWidth ./ syncWidthsNormaliser);
 a(3:4) = [0, maxForEigenvalues];
 axis(a)
 ylabel(labelEigenvalueAxis);

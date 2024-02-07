@@ -6,10 +6,17 @@
 % Copyright (C) 2023 Joseph T. Lizier
 % Distributed under GNU General Public License v3
 
-if (length(varargin) == 1)
+% Allow the parameters object to have been defined in a varargin from the
+% calling function:
+if (exist('varargin', 'var') && (length(varargin) == 1))
     % User has provided a parameters object directly or a string specifying
     % the filename to load a parameters object in.
     parameters = varargin{1};
+end
+
+if (exist('parameters', 'var'))
+    % parameters variable either already exists in this context or was
+    % created by the statement above
     if ischar(parameters)
         % Assume that this string contains a filename which when run will load
         % a properties object for this run
@@ -94,6 +101,7 @@ else
 end
 if (discretized)
     discString = 'disc';
+    deltaT = 1; % The natural time step
 else
     discString = 'cont';
 end
