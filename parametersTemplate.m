@@ -106,11 +106,24 @@ parameters.S = 0;
 %   use the full range in the following:
 parameters.SRangeToPlot = 0;
 
-% - maxMotifLength - for continuous process, this is the max motif length (m)
-%    to make the sync approximations up to; for discrete process, this is the maximum walk
+% - motifLengthsToCheck -
+%    An array of motif lengths to make sync approximations up to.
+%    For continuous process, this is the max motif length (m);
+%    For discrete process, this is the maximum walk
 %    length (u) to make the sync approximations up to (this is half the motif size,
 %    since the relevant motif here is two converging walks of the same size u).
+%    Optional -- if not supplied, then maxMotifLength should be.
+% parameters.motifLengthsToCheck = [2,10,50];
+% - maxMotifLength -
+%    This parameter is only checked if motifLengthsToCheck is not supplied.
+%    In this case, motifLengthsToCheck is set to 1:maxMotifLength
 parameters.maxMotifLength = 50;
+
+% - checkDiagonalizable - whether to check if the connectivity matrix is
+% diagonalizable or not; this takes a long time for long delays, so
+% allowing this to be skipped if we're not planning to analyse it.
+% Optional -- default true.
+parameters.checkDiagonalizable = true;
 
 % - folder - directory where all of the files are to be stored.
 if isCluster

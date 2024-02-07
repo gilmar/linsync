@@ -29,17 +29,26 @@ if (length(varargin) == 1)
     d = parameters.d;
     S = parameters.S;
     SRangeToPlot = parameters.SRangeToPlot;
+    if (~isfield(parameters, 'motifLengthsToCheck'))
+        parameters.motifLengthsToCheck = 1:parameters.maxMotifLength;
+    end
+    motifLengthsToCheck = parameters.motifLengthsToCheck;
+    parameters.maxMotifLength = max(parameters.motifLengthsToCheck);
     maxMotifLength = parameters.maxMotifLength;
     folder = parameters.folder;
     MaxK = parameters.MaxK;
     dt = parameters.dt;
     randSeed = parameters.randSeed;
+    if (~isfield(parameters, 'checkDiagonalizable'))
+        parameters.checkDiagonalizable = true;
+    end
+    checkDiagonalizable = parameters.checkDiagonalizable;
     originalParameters = parameters; % Store for later
 elseif (length(varargin) < 12)
     fprintf('Not enough arguments supplied, see code for details');
 else
     % All parameters have been supplied individually
-    %  We are *deprecating* this method!
+    %  We are *deprecating* this method so do not rely on it!
     N = varargin{1};
     b = varargin{2};
     c = varargin{3};
@@ -51,7 +60,7 @@ else
     d = varargin{9};
     S = varargin{10};
     SRangeToPlot = S; % only used by plot scripts in position of S
-    maxMotifLength = varargin{11};
+    maxMotifLength = varargin{11}; % This parameter is deprecated, see above.
     folder = varargin{12};
     if (length(varargin) > 12)
         MaxK = varargin{13};
@@ -67,6 +76,11 @@ else
         randSeed = varargin{15};
     else
         randSeed = 'shuffle';
+    end
+    if (length(varargin) > 15)
+        checkDiagonalizable = varargin{16};
+    else
+        checkDiagonalizable = true;
     end
 end
 

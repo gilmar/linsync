@@ -1,6 +1,6 @@
 function computeSyncResults(varargin)
-%% function computeSyncResults(N, b, c, undirected, discretized, repeats, networkType, p, d, S, maxMotifLength, folder, MaxK, dt)
-% function computeSyncResults(properties)
+%% function computeSyncResults(properties)
+% function computeSyncResults(N, b, c, undirected, discretized, repeats, networkType, p, d, S, maxMotifLength, folder, MaxK, dt)
 %
 % Generate networks and compute the synchronizability for a number of networks assuming gaussian dynamics
 %  (discrete time AR or continuous time Ornstein-Uhlenbeck as specified in input).
@@ -44,7 +44,7 @@ indices = length(paramsToRunThrough);
 
 % Create storage for the means
 syncWidths = zeros(indices, repeats);
-syncWidthApproxes = zeros(indices, maxMotifLength, repeats);
+syncWidthApproxes = zeros(indices, length(parameters.motifLengthsToCheck), repeats);
 syncWidthEmpirical = zeros(indices, repeats);
 dominantEigenvalues = zeros(indices, repeats);
 secondEigenvalues = zeros(indices, repeats);
@@ -91,14 +91,15 @@ for paramIndex = 1 : indices
         syncWidths(paramIndex, r) = syncWidth;
 
         % Now check what the sync width approximation by low order motifs looks like here:
-        % Max motif length means:
+        % Motif length means:
         %  -- for discrete, the length u of both walks (so a walk length of 2 means size 4 motif);
         %  -- for continuous, the actual motif size m (composed of walk
         %       length u and m-u)
-        for k = 1 : maxMotifLength
+        for kIndex = 1 : length(parameters.motifLengthsToCheck)
+            k = parameters.motifLengthsToCheck(kIndex);
             % verbose = -1 to suppress warnings on lack of convergence, since we're only asking for a low order approximation
             [~, UcovarianceUApprox, ~, ~] = covarianceUGaussianNet(C, discretized, k, true, -1, true);
-            syncWidthApproxes(paramIndex, k, r) = synchronizability(UcovarianceUApprox);
+            syncWidthApproxes(paramIndex, kIndex, r) = synchronizability(UcovarianceUApprox);
         end
         
         % Compute sync width empirically (<\sigma^2>_E) from simulations of the dynamics
@@ -130,9 +131,13 @@ for paramIndex = 1 : indices
         secondEigenvalue = sortedEigsByCriteria(length(sortedEigsByCriteria) - 1);
         secondEigenvalues(paramIndex, r) = secondEigenvalue;
         
-        % And finally check whether the weighted adjacency matrix was
-        % diagonlizable:
-        diagonalizable(paramIndex, r) = isdiagonalizable(B);
+        if (parameters.checkDiagonalizable)
+            % And finally check whether the weighted adjacency matrix was
+            % diagonlizable:
+            diagonalizable(paramIndex, r) = isdiagonalizable(B);
+        else
+            diagonalizable(paramIndex, r) = nan;
+        end
 
         fprintf('Repeat %d for parameter(%d)=%.4f: sync_width=%.1f, empirical=%.1f, approx(1)=%.1f, approx(2)=%.1f, approx(3)=%.1f, lambda_1=%.4f, lambda_2=%.4f, isdiag=%d\n\n', ...
             r, paramIndex, paramsToRunThrough(paramIndex), syncWidth, empiricalSyncWidth, syncWidthApproxes(paramIndex, 1, r), syncWidthApproxes(paramIndex, 2, r), ...
@@ -154,7 +159,7 @@ end
 %  parameter, but parameter being swept will be indicated
 fileNamePrefix = sprintf('%s/N%d-%s%s-b%.2f-c%.2f-p%.4f-sweep_%s-%s-k%d-%s-S%d-repeats%d', ...
                 folder, parameters.N, networkType, netTypeSuffix, parameters.b, parameters.c, parameters.p, ...
-                parameters.tosweep, undirString, maxMotifLength, discString, S, repeats);
+                parameters.tosweep, undirString, parameters.maxMotifLength, discString, S, repeats);
 
 % Convert booleans to integers so Matlab can save them
 if (discretized)
@@ -175,7 +180,8 @@ if (~exist(folder, 'dir'))
     fprintf('Creating folder %s as it did not exist\n', folder);
     mkdir(folder);
 end
-save([fileNamePrefix, '.mat'], '-mat', 'N', 'd', 'b', 'c', 'p', 'undirected', 'maxMotifLength', 'discretized', ...
+save([fileNamePrefix, '.mat'], '-mat', 'N', 'd', 'b', 'c', 'p', 'undirected', ...
+    'motifLengthsToCheck', 'maxMotifLength', 'discretized', ...
     'networkType', 'paramsToRunThrough', 'S', 'repeats', ...
     'syncWidths', 'syncWidthApproxes', 'syncWidthEmpirical', ...
     'dominantEigenvalues', 'secondEigenvalues', 'diagonalizable', ...
