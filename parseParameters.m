@@ -50,6 +50,10 @@ if (exist('parameters', 'var'))
         parameters.checkDiagonalizable = true;
     end
     checkDiagonalizable = parameters.checkDiagonalizable;
+    if (~isfield(parameters, 'computationMode'))
+        parameters.computationMode = 'sync';   % default: backward-compatible
+    end
+    computationMode = parameters.computationMode;
     originalParameters = parameters; % Store for later
 elseif (length(varargin) < 12)
     fprintf('Not enough arguments supplied, see code for details');
@@ -89,6 +93,10 @@ else
     else
         checkDiagonalizable = true;
     end
+end
+
+if (~exist('computationMode', 'var'))
+    computationMode = 'sync';
 end
 
 % Now pull out some useful strings (for filenames and debug prints)

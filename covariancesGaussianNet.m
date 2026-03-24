@@ -1,4 +1,4 @@
-function [sortedLambdas, covariance, B, err] = covarianceUGaussianNet(C, discreteTime, maximumIterations, forcePowerSeriesForSymmetric, verbose, skipEigsCalculateAndCheck)
+function [sortedLambdas, covariance, B, err] = covariancesGaussianNet(C, discreteTime, maximumIterations, forcePowerSeriesForSymmetric, verbose, skipEigsCalculateAndCheck)
 %
 % Computes the eigenvalues of C, and the covariance matrix (\Omega) for the given network.
 %
@@ -16,7 +16,7 @@ function [sortedLambdas, covariance, B, err] = covarianceUGaussianNet(C, discret
 %       Only valid for discreteTime=true at present.
 % - discreteTime - whether the time-series dynamics from a discrete-time AR process (true)
 %    or continuous time Ornstein-Uhlenbeck process.
-% - maximumIterations - the number of components to add into the power series for UcovarianceU. Default is 1000
+% - maximumIterations - the number of components to add into the power series for Omega. Default is 1000
 % - forcePowerSeriesForSymmetric - force the use of power series for covariance even if the
 %     connectivity matrix is symmetric
 % - verbose - level of verbosity for discreteCon2Cov and con2cov
@@ -32,8 +32,8 @@ function [sortedLambdas, covariance, B, err] = covarianceUGaussianNet(C, discret
 %    B (if including delays), (from smallest to largest magnitude if
 %    complex).
 % - covariance - covariance matrix \Omega_X, of system X
-%     (whether we are using standard delay only, or multiple delays -- 
-%      i.e. this is not the project covariance for embedded system Z
+%     (whether we are using standard delay only, or multiple delays --
+%      i.e. this is not the projected covariance for embedded system Z
 %      if we are dealing with delays)
 %     \Omega is the covariance matrix of X (not Z), assuming the Ornstein-Uhlenbeck or VAR process.
 % - B - the matrix is just the C matrix is the case of no-delays (C is
@@ -55,8 +55,6 @@ if (hasDelays)
 else
     tauPlus1 = 1; % Only the standard delay here
 end
-% For system X:
-I = eye(N);
 
 if (nargin < 3)
     maximumIterations = 1000; % This will be on the low side, should be setting something higher for proper experiments.
@@ -117,7 +115,7 @@ if (~skipEigsCalculateAndCheck)
         end
     end
     
-    % Check for convergence of the projected covariance matrix: (same condition for both continuous and discrete):
+    % Check for convergence of the covariance matrix: (same condition for both continuous and discrete):
     if (abs(lambdaMax) >= 1)
         save('nonconvergentNetwork.mat', 'C'); % save for later investigation
         error('|\\lambda_B_max| >= 1 (%.2f) implies that the \\Omega matrix will not converge.\n', abs(lambdaMax));
@@ -127,10 +125,10 @@ else
 end
 
 % Check whether matrix B is symmetric or not, to help speed up the
-% projected covariance calculation:
+% covariance calculation:
 symmetric = isempty(find(B - B' > tol*eps, 1));
 
-% Now compute the UcovarianceU matrix
+% Now compute the (full) covariance matrix Omega
 if (discreteTime)
     if (hasDelays)
         % Case with delays

@@ -9,11 +9,14 @@
 
 clear parameters; % In case parameters previously held the name of the parameters file
 
-% You can use this boolean to flag different folders for local and cluster runs:
-if exist('/home/joseph/') > 0
+% You can use this boolean to flag different folders for local and cluster runs.
+% Local checkouts (e.g. Windows) are not cluster; use PBS_JOBID to detect cluster jobs.
+if exist('/home/joseph/', 'dir')
     isCluster = false;
-else
+elseif ~isempty(getenv('PBS_JOBID'))
     isCluster = true;
+else
+    isCluster = false;
 end
 
 % Set the location of the code library - only required for
@@ -47,6 +50,11 @@ parameters.undirected = false;
 % - discretized - whether the time-series is estimated from a discrete-time
 %    process (true) or use of exact method assuming continuous-time process (false)
 parameters.discretized = false;
+
+% - computationMode - 'sync' (default) to compute deviation from synchronization
+%   (sigma^2) via covarianceUGaussianNet, or 'stability' to compute deviation
+%   from stability (Dst) via covariancesGaussianNet.
+parameters.computationMode = 'sync';
 
 % - repeats - how many networks to sample with each parameter set.
 %   Want to have this as a large number for good sampling; setting it 
@@ -129,7 +137,7 @@ parameters.checkDiagonalizable = true;
 if isCluster
     parameters.folder = './results/N100-randRing-d4-b1.00-c0.50-dir-k4-cont/[@P1]';
 else
-    parameters.folder = './';
+    parameters.folder = './results';
 end
 
 % combineResultsFrom - in the case of a cluster run, we will want to combine

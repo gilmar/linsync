@@ -1,7 +1,7 @@
 function combineSyncResults(parameters)
 %
-% Combine the sync results for randomly generated networks as specified in the 
-% parameters object (or file)
+% Combine the sync (and, when present, stability) results for randomly generated
+% networks as specified in the parameters object (or file).
 %
 % Inputs:
 % - parameters - an object containing the expected properties, or a string
@@ -45,6 +45,7 @@ for s = parameters.SRangeToPlot
     
     totalRepeats = 0;
     allSyncWidths = [];
+    allStabilityWidths = [];
     allSyncWidthApproxes = [];
     allSyncWidthEmpirical = [];
     allDominantEigenvalues = [];
@@ -68,12 +69,22 @@ for s = parameters.SRangeToPlot
             end
             % Make sure we don't overwrite the parameters variable, just
             % load in the others to be re-saved later
+            varsInFile = whos('-file', resultsFilename);
+            varNames = {varsInFile.name};
             load(resultsFilename, 'N', 'd', 'b', 'c', 'p', 'undirected', 'maxMotifLength', 'discretized', ...
                 'networkType', 'paramsToRunThrough', 'S', 'repeats', 'syncWidths', 'syncWidthApproxes', ...
                 'syncWidthEmpirical', 'dominantEigenvalues', 'secondEigenvalues');
+            if (ismember('stabilityWidths', varNames))
+                sw = load(resultsFilename, 'stabilityWidths');
+                stabilityWidths = sw.stabilityWidths;
+            else
+                % Legacy .mat files from before stabilityWidths was saved
+                stabilityWidths = nan(size(syncWidths));
+            end
             totalRepeats = totalRepeats + repeats;
             fprintf('Loaded %d repeats from folder %s (running total %d)\n', repeats, file.name, totalRepeats);
             allSyncWidths = [allSyncWidths, syncWidths];
+            allStabilityWidths = [allStabilityWidths, stabilityWidths];
             allSyncWidthApproxes = cat(3, allSyncWidthApproxes, syncWidthApproxes);
             allSyncWidthEmpirical = [allSyncWidthEmpirical, syncWidthEmpirical];
             allDominantEigenvalues = [allDominantEigenvalues, dominantEigenvalues];
@@ -90,6 +101,7 @@ for s = parameters.SRangeToPlot
     fileNameSuffix = strrep(fileNameSuffix, sprintf('-repeats*', repeats), sprintf('-repeats%d', totalRepeats));
     repeats = totalRepeats;
     syncWidths = allSyncWidths;
+    stabilityWidths = allStabilityWidths;
     syncWidthApproxes = allSyncWidthApproxes;
     syncWidthEmpirical = allSyncWidthEmpirical;
     dominantEigenvalues = allDominantEigenvalues;
@@ -104,7 +116,7 @@ for s = parameters.SRangeToPlot
     save(combinedFilename, '-mat', 'N', 'd', 'b', 'c', 'p', 'undirected', ...
          'motifLengthsToCheck', 'maxMotifLength', 'discretized', ...
          'networkType', 'paramsToRunThrough', 'S', 'repeats', ...
-         'syncWidths', 'syncWidthApproxes', 'syncWidthEmpirical', ...
+         'syncWidths', 'stabilityWidths', 'syncWidthApproxes', 'syncWidthEmpirical', ...
          'dominantEigenvalues', 'secondEigenvalues', 'parameters');
     fprintf('Saving results from %d total repeats to %s\n', repeats, combinedFilename);
 
