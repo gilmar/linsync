@@ -2,10 +2,10 @@
 
 Copyright (C) 2012- [Joseph T. Lizier](http://lizier.me/joseph/)
 
-The `linsync` toolkit provides Matlab tools for analysing **synchronization** in networks of linearly coupled nodes.
+The `linsync` toolkit provides Matlab tools for analysing **synchronization** and **stability** in networks of linearly coupled nodes.
 Specifically, it provides implementations of the maths to measure and explore
-the expected mean square deviation from synchronization $\left\langle \sigma^2 \right\rangle$ as a function of network coupling matrix $C$, with
-the mathematical details provided in the following paper:
+the expected mean square deviation from synchronization $\left\langle \sigma^2 \right\rangle$ (projected covariance) and, optionally, the deviation from stability $D_{\mathrm{st}} = \frac{1}{N}\mathrm{trace}(\Omega)$ using the full stationary covariance $\Omega$, as functions of the network coupling matrix $C$. The synchronizability paper below gives the details for $\left\langle \sigma^2 \right\rangle$; see also [Section 1.6](#16-deviation-from-stability-d_st) for $D_{\mathrm{st}}$.
+The mathematical details for $\left\langle \sigma^2 \right\rangle$ are provided in the following paper:
 
 J.T. Lizier, F. Bauer, F.M. Atay, and J. Jost,
 _"Analytic relationship of relative synchronizability to network structure and motifs"_,
@@ -40,6 +40,8 @@ In this readme, we describe:
 1. how to [recreate](#2-recreating-the-results-from-our-papers) results from our papers
 1. the [contents](#3-brief-descriptions-of-files-in-this-folder) of this top-level folder (the primary analysis scripts).
 
+Stability ($D_{\mathrm{st}}$) is covered in [Section 1.6](#16-deviation-from-stability-d_st); the rest of Section 1 focuses on synchronizability ($\left\langle \sigma^2 \right\rangle$) unless noted.
+
 # 1. Use cases
 
 In this section we briefly outline the primary use cases here, being:
@@ -57,6 +59,8 @@ Then building on those we discuss more involved use cases for:
 Finally, with the results generated you can:
 
 5. [plot the results](#15-making-plots-from-results-files) from these runs.
+
+6. [Compute deviation from stability](#16-deviation-from-stability-d_st) $D_{\mathrm{st}}$ and plot it (optional; uses the same batch framework as sync).
 
 ## 1.1 Generating network structure
 
@@ -177,30 +181,94 @@ wish to plot for (specified by `parameters.SRangeToPlot`).
 We show how to generate such batch results on a cluster recreating the Figure 1 and 4 plots
 from the 2023 paper in [cluster](/cluster).
 
+## 1.6 Deviation from stability (D_st)
+
+The toolkit can compute **deviation from synchronization** $\left\langle \sigma^2 \right\rangle$ (projected covariance) or **deviation from stability** $D_{\mathrm{st}} = \frac{1}{N}\mathrm{trace}(\Omega)$ (full stationary covariance $\Omega$). You choose the mode with **`parameters.computationMode`**.
+
+### Set `computationMode`
+
+In your parameters script (copy from `parametersTemplate.m` or use a paper-specific file such as `2026-StabilityPaper/stabilityFigure2Parameters.m`), set:
+
+```matlab
+parameters.computationMode = 'stability';
+```
+
+If this field is omitted, **`parseParameters`** defaults to **`'sync'`** (backward-compatible).
+
+### What runs under the hood
+
+- **`'sync'`** (default): `covarianceUGaussianNet` → projected covariance $U\Omega U$ → $\left\langle \sigma^2 \right\rangle$ via `synchronizability`.
+- **`'stability'`**: `covariancesGaussianNet` → full $\Omega$ from the same Gaussian dynamics (continuous OU or discrete VAR, per `discretized`) → **$D_{\mathrm{st}} = \mathrm{trace}(\Omega)/N$**.
+
+Eigenvalues saved in the result file are **eig(C)** in stability mode (coupling matrix $C$) and **eig(C·U)** in sync mode (projected operator). Motif-length approximations are only computed in sync mode.
+
+### Run the experiment
+
+From the MATLAB path that includes the toolkit root:
+
+```matlab
+computeSyncResults('path/to/yourParameters.m')
+```
+
+Despite the filename, this script runs **either** mode depending on `computationMode`. It sweeps `parameters.tosweep` (often `'p'`), generates networks, and saves a **single `.mat`** under `parameters.folder`, including **`stabilityWidths`** (and **`syncWidths`**, which are NaN in stability mode).
+
+### Plot stability results
+
+```matlab
+plotStabilityResults('path/to/theSameParameters.m')
+```
+
+Use the **same** parameters file as for `computeSyncResults` so the generated filename matches.
+
+### Example: stability paper Figure 2
+
+The folder [2026-StabilityPaper](2026-StabilityPaper) contains `stabilityFigure2Parameters.m` (Watts–Strogatz ring, sweep $p$, continuous time). Run:
+
+```matlab
+computeSyncResults('2026-StabilityPaper/stabilityFigure2Parameters.m')
+plotStabilityResults('2026-StabilityPaper/stabilityFigure2Parameters.m')
+```
+
+### Cluster: combining partial runs
+
+If you use **`cluster/combineSyncResults.m`** to merge shard `.mat` files, combined outputs include **`stabilityWidths`** when present (older shards without it are padded with NaN).
+
+### Citing the stability paper
+
+Cite the stability paper where you describe $D_{\mathrm{st}}$ and figures (authors, title, venue, year, DOI/arXiv as appropriate for your submission).
+
 # 2. Recreating the results from our papers
 
 * For Lizier et al., "Analytic relationship of relative synchronizability to
 network structure and motifs", 2023, the folder [2023-AnalyticRelationshipPaper](/2023-AnalyticRelationshipPaper)
 contains scripts / parameters files to recreate these results, as well as a README documenting how to run them.
 
+* For stability ($D_{\mathrm{st}}$) experiments and Figure 2–style sweeps, see [2026-StabilityPaper](2026-StabilityPaper) and [Section 1.6](#16-deviation-from-stability-d_st) above.
+
 # 3. Brief descriptions of files in this folder:
 
 Primary experimental scripts to run:
-* `computeSyncResults.m` - main script to sample $\left\langle \sigma^2 \right\rangle$ for many networks
-   with given parameters; saves results to .mat files for later processing.
+* `computeSyncResults.m` - main script to sample $\left\langle \sigma^2 \right\rangle$ and/or $D_{\mathrm{st}}$ for many networks
+   with given parameters (controlled by `parameters.computationMode`: `'sync'` or `'stability'`); saves results to .mat files for later processing.
 
 Plotting scripts once results are ready:
 * `plotSyncResults.m` - plot $\left\langle \sigma^2 \right\rangle$ versus $p$ or $c$ (like Figure 4).
+* `plotStabilityResults.m` - plot $D_{\mathrm{st}}$ and eigenvalues of $C$ versus a swept parameter (stability mode results).
 * `plotErrorInEmpiricalSyncResults.m` - plot difference between analytic
    and empirical results for $\left\langle \sigma^2 \right\rangle$ (like Figure 1).
 
 User-level scripts for analytical computation of projected covariance matrices and $\left\langle \sigma^2 \right\rangle$: 
 * `covarianceUGaussianNet.m` - computes the projected covariance matrix ($\Omega_U$) and eigenvalues of a given connectivity matrix $C$.
+* `covariancesGaussianNet.m` - computes the **full** covariance matrix $\Omega$ and eigenvalues of $C$ (for $D_{\mathrm{st}}$; used when `computationMode` is `'stability'`).
 * `synchronizability.m` - computes $\left\langle \sigma^2 \right\rangle$ from the output ($\Omega_U$)  of `covarianceUGaussianNet.m`.
 
 Underlying scripts involved in _analytical_ computation of projected covariance matrices and $\left\langle \sigma^2 \right\rangle$:
 * `contCon2CovProjected.m` * - computes the projected covariance matrix for the continuous-time case
 * `discreteCon2CovProjected.m` * - computes the projected covariance matrix for the discrete-time case
+
+Underlying scripts involved in _analytical_ computation of the **full** covariance $\Omega$ (stability / $D_{\mathrm{st}}$):
+* `con2cov.m` * - full stationary covariance for continuous-time OU dynamics (from ncomp; see file header for citation)
+* `discreteCon2Cov.m` * - full stationary covariance for discrete-time VAR dynamics
 
 Underlying scripts to run _numerical_ simulations of dynamics for empirical calculation of $\left\langle \sigma^2 \right\rangle$:
 * `empiricalCovariancesProjected.m` - runs numerical simulations to return an empirical measurement of the projected covariance matrix, for a given number of time samples `S`.
@@ -212,7 +280,7 @@ Scripts to generate new adjacency matrices:
 * `generateNewRandomRingMatrix.m` - generate new Watts-Strogatz ring network, starting with fixed in-degree and then randomising edges (for directed graphs the in-degree is maintained)
 
 Sample parameters file:
-* `parametersTemplate.m` - set parameters for batch experimental runs.
+* `parametersTemplate.m` - set parameters for batch experimental runs (including optional `computationMode`: `'sync'` for $\left\langle \sigma^2 \right\rangle$ or `'stability'` for $D_{\mathrm{st}}$).
 
 Utility files:
 * `adjMatrixToList.m` - converts an adjacency matrix to a list, required for some of the network generators.
