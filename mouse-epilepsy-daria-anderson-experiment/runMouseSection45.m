@@ -157,6 +157,21 @@ if opts.Verbose
     fprintf('D_st (healthy) = %.6f (via trace(Omega)/N)\n', D_st_healthy);
 end
 
+%% Classical graph-theoretic centralities (for comparison with D(->i), D(k->))
+% Computed on the same C_healthy used above so the comparison is
+% apples-to-apples with the stability centralities. See Liao & Lizier
+% (2026), Appendix G, and Oldham et al. (2019).
+try
+    classicalCentralities = computeNetworkCentralities(C_healthy);
+    if opts.Verbose
+        fprintf('Classical centralities computed on C_healthy.\n');
+    end
+catch ME
+    warning('runMouseSection45:Centralities', ...
+        'computeNetworkCentralities failed: %s', ME.message);
+    classicalCentralities = struct();
+end
+
 %% Per-node critical excitability x^c_{0,i}
 x0_crit  = NaN(N, 1);
 rho_crit = NaN(N, 1);
@@ -256,6 +271,7 @@ results.OmegaTranspose   = OmegaT;
 results.D_susceptibility = D_susceptibility;
 results.D_influence      = D_influence;
 results.D_st_healthy     = D_st_healthy;
+results.centralities     = classicalCentralities;
 results.x0_crit          = x0_crit;
 results.rho_at_crit      = rho_crit;
 results.err_fwd          = err_fwd;
