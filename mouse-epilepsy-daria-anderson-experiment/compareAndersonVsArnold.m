@@ -1,12 +1,18 @@
 function summary = compareAndersonVsArnold(varargin)
-%COMPAREANDERSONVSARNOLD  Per-node sanity check: compare D(->i) and
-% D(k->) for every Anderson mouse against the per-node average across
-% the Arnold cohort, to flag regions whose centrality changes
-% dramatically between the two strains.
+%COMPAREANDERSONVSARNOLD  Per-node sanity check: compare D(->i),
+% D(k->), and Betweenness Centrality (BC) for every Anderson mouse
+% against the per-node average across the Arnold cohort, to flag
+% regions whose centrality changes dramatically between the two strains.
+%
+% BC is included alongside the stability centralities because, on the
+% Parkes-normalised symmetric mouse connectomes, the other classical
+% centralities (PR, KZ, EC, SelfC, in/out-DC) collapse onto D(->i)
+% (Spearman rho >= 0.96), while BC carries genuinely independent
+% information (rho ~ 0.78). See results/centrality_comparison_analysis.md.
 %
 % Reads the per-mouse results that runAllMiceSection45 writes under
 % results/ (section45_<mouseId>_<scheme>_results.mat). For each Anderson
-% mouse, produces a 2x1 figure (D(->i) on top, D(k->) on bottom):
+% mouse, produces a 3x1 figure (D(->i), D(k->), BC):
 %
 %   * shaded band  -- Arnold mean +- SD per node
 %   * blue line    -- Arnold mean
@@ -35,7 +41,7 @@ function summary = compareAndersonVsArnold(varargin)
 setupMousePaths();
 
 p = inputParser;
-addParameter(p, 'Normalisation', 'parkes', @(s) ischar(s) || isstring(s));
+addParameter(p, 'Normalisation', 'column', @(s) ischar(s) || isstring(s));
 addParameter(p, 'ZThreshold',    2.0,  @isscalar);
 addParameter(p, 'Alpha',         0.05, @(x) isscalar(x) && x > 0 && x < 1);
 addParameter(p, 'SaveResults',   true, @islogical);
@@ -100,10 +106,25 @@ D_infl_anderson = packField(loaded, isAnderson, 'D_influence',      N);
 D_susc_arnold   = packField(loaded, isArnold,   'D_susceptibility', N);
 D_infl_arnold   = packField(loaded, isArnold,   'D_influence',      N);
 
+% Betweenness centrality from the classical-centralities struct on each
+% per-mouse result. Older results (pre-centralities) get NaN and BC is
+% silently skipped.
+BC_anderson = packCentrality(loaded, isAnderson, 'betweenness', N);
+BC_arnold   = packCentrality(loaded, isArnold,   'betweenness', N);
+hasBC = any(~isnan(BC_arnold(:))) && any(~isnan(BC_anderson(:)));
+if ~hasBC
+    warning('compareAndersonVsArnold:NoBC', ...
+        ['Betweenness centrality not available on any loaded result ' ...
+         '(centralities.betweenness missing or all-NaN). BC panel will ' ...
+         'be skipped. Re-run runAllMiceSection45 with BCT on the path.']);
+end
+
 D_susc_arnold_mean = mean(D_susc_arnold, 2, 'omitnan');
 D_susc_arnold_std  = std(D_susc_arnold,  0, 2, 'omitnan');
 D_infl_arnold_mean = mean(D_infl_arnold, 2, 'omitnan');
 D_infl_arnold_std  = std(D_infl_arnold,  0, 2, 'omitnan');
+BC_arnold_mean     = mean(BC_arnold,     2, 'omitnan');
+BC_arnold_std      = std(BC_arnold,      0, 2, 'omitnan');
 
 % A node is "trivial" for the comparison if it is trivial in any Arnold
 % run (Arnold mean would be uninformative there).
@@ -124,54 +145,78 @@ fprintf('  Arnold  : %s\n', strjoin(arnoldNames,   ', '));
 
 %% One figure per Anderson mouse
 deviations = struct();
+nPanels = 2 + double(hasBC);
 for a = 1:numel(andersonNames)
     aname = andersonNames{a};
     aSusc = D_susc_anderson(:, a);
     aInfl = D_infl_anderson(:, a);
+    aBC   = BC_anderson(:, a);
 
     zSusc = safeZ(aSusc, D_susc_arnold_mean, D_susc_arnold_std);
     zInfl = safeZ(aInfl, D_infl_arnold_mean, D_infl_arnold_std);
+    zBC   = safeZ(aBC,   BC_arnold_mean,     BC_arnold_std);
 
-    % Bonferroni correction: one two-tailed test per non-trivial node per metric
+    % Bonferroni correction: one two-tailed test per non-trivial node per
+    % included metric. BC tests are added to the family only when BC data
+    % is present, so the threshold tightens accordingly.
     nTests = sum(~trivialAcrossArnold & ~isnan(zSusc)) + ...
              sum(~trivialAcrossArnold & ~isnan(zInfl));
+    if hasBC
+        nTests = nTests + sum(~trivialAcrossArnold & ~isnan(zBC));
+    end
     if nTests == 0; nTests = 1; end
     pSusc      = 2 * (1 - normcdf(abs(zSusc)));
     pInfl      = 2 * (1 - normcdf(abs(zInfl)));
+    pBC        = 2 * (1 - normcdf(abs(zBC)));
     pSusc_bonf = min(1, pSusc * nTests);
     pInfl_bonf = min(1, pInfl * nTests);
+    pBC_bonf   = min(1, pBC   * nTests);
     % Corrected z-threshold for display (equivalent to Bonferroni at Alpha)
     zThresh_bonf = norminv(1 - opts.Alpha / (2 * nTests));
     outlierMaskSusc = ~trivialAcrossArnold & ~isnan(pSusc_bonf) & pSusc_bonf < opts.Alpha;
     outlierMaskInfl = ~trivialAcrossArnold & ~isnan(pInfl_bonf) & pInfl_bonf < opts.Alpha;
+    outlierMaskBC   = ~trivialAcrossArnold & ~isnan(pBC_bonf)   & pBC_bonf   < opts.Alpha;
 
+    figHeight = 380 * nPanels + 80;
     fig = figure('Name', sprintf('%s vs Arnold per-node centralities', aname), ...
-                 'Position', [60 60 1700 820]);
+                 'Position', [60 60 1700 figHeight]);
 
-    plotComparisonPanel(1, aSusc, D_susc_arnold, ...
+    plotComparisonPanel(nPanels, 1, aSusc, D_susc_arnold, ...
         D_susc_arnold_mean, D_susc_arnold_std, zSusc, ...
         labels, trivialAcrossArnold, outlierMaskSusc, ...
         sprintf('D(\\rightarrow i): %s vs Arnold mean \\pm SD (n=%d)  [Bonferroni |z|\\geq%.2f, \\alpha=%.3f]', ...
             strrep(aname, '_', '\_'), nArnold, zThresh_bonf, opts.Alpha), ...
         'D(\rightarrow i)');
 
-    plotComparisonPanel(2, aInfl, D_infl_arnold, ...
+    plotComparisonPanel(nPanels, 2, aInfl, D_infl_arnold, ...
         D_infl_arnold_mean, D_infl_arnold_std, zInfl, ...
         labels, trivialAcrossArnold, outlierMaskInfl, ...
         sprintf('D(k \\rightarrow): %s vs Arnold mean \\pm SD (n=%d)  [Bonferroni |z|\\geq%.2f, \\alpha=%.3f]', ...
             strrep(aname, '_', '\_'), nArnold, zThresh_bonf, opts.Alpha), ...
         'D(k \rightarrow)');
 
-    sgtitle(sprintf(['Per-node stability centralities: %s vs Arnold ' ...
-        'cohort  --  normalisation = %s'], strrep(aname, '_', '\_'), scheme), ...
+    if hasBC
+        plotComparisonPanel(nPanels, 3, aBC, BC_arnold, ...
+            BC_arnold_mean, BC_arnold_std, zBC, ...
+            labels, trivialAcrossArnold, outlierMaskBC, ...
+            sprintf('BC: %s vs Arnold mean \\pm SD (n=%d)  [Bonferroni |z|\\geq%.2f, \\alpha=%.3f]', ...
+                strrep(aname, '_', '\_'), nArnold, zThresh_bonf, opts.Alpha), ...
+            'BC');
+    end
+
+    sgtitle(sprintf(['Per-node centralities: %s vs Arnold cohort  --  ' ...
+        'normalisation = %s'], strrep(aname, '_', '\_'), scheme), ...
         'Interpreter', 'tex');
 
-    deviations.(matlab.lang.makeValidName(aname)) = struct( ...
+    devStruct = struct( ...
         'D_susc_anderson', aSusc,      'D_infl_anderson', aInfl, ...
-        'z_susc',          zSusc,      'z_infl',          zInfl, ...
-        'p_susc',          pSusc,      'p_infl',          pInfl, ...
-        'p_bonf_susc',     pSusc_bonf, 'p_bonf_infl',     pInfl_bonf, ...
-        'nTests',          nTests,     'zThresh_bonf',    zThresh_bonf);
+        'BC_anderson',     aBC, ...
+        'z_susc',          zSusc,      'z_infl',          zInfl,    'z_BC',        zBC, ...
+        'p_susc',          pSusc,      'p_infl',          pInfl,    'p_BC',        pBC, ...
+        'p_bonf_susc',     pSusc_bonf, 'p_bonf_infl',     pInfl_bonf,'p_bonf_BC',  pBC_bonf, ...
+        'nTests',          nTests,     'zThresh_bonf',    zThresh_bonf, ...
+        'hasBC',           hasBC);
+    deviations.(matlab.lang.makeValidName(aname)) = devStruct;
 
     if opts.SaveResults
         baseName = sprintf('compare_anderson_vs_arnold_%s_%s', aname, scheme);
@@ -182,7 +227,7 @@ for a = 1:numel(andersonNames)
             saveas(fig, fullfile(resultsDir, [baseName '.png']));
         end
 
-        outMask = outlierMaskSusc | outlierMaskInfl;
+        outMask = outlierMaskSusc | outlierMaskInfl | outlierMaskBC;
         outIdx = find(outMask);
         if ~isempty(outIdx)
             T = table(outIdx, string(labels(outIdx)), ...
@@ -192,13 +237,18 @@ for a = 1:numel(andersonNames)
                 aInfl(outIdx), D_infl_arnold_mean(outIdx), ...
                 D_infl_arnold_std(outIdx), zInfl(outIdx), ...
                 pInfl(outIdx), pInfl_bonf(outIdx), ...
+                aBC(outIdx),   BC_arnold_mean(outIdx), ...
+                BC_arnold_std(outIdx), zBC(outIdx), ...
+                pBC(outIdx),   pBC_bonf(outIdx), ...
                 'VariableNames', {'NodeIdx','Region', ...
                     'D_susc_anderson','D_susc_arnold_mean','D_susc_arnold_std', ...
                     'z_susc','p_susc','p_bonf_susc', ...
                     'D_infl_anderson','D_infl_arnold_mean','D_infl_arnold_std', ...
-                    'z_infl','p_infl','p_bonf_infl'});
-            % Sort by smallest Bonferroni p-value in either centrality
-            minBonfP = min(T.p_bonf_susc, T.p_bonf_infl);
+                    'z_infl','p_infl','p_bonf_infl', ...
+                    'BC_anderson','BC_arnold_mean','BC_arnold_std', ...
+                    'z_BC','p_BC','p_bonf_BC'});
+            % Sort by smallest Bonferroni p-value across the three metrics
+            minBonfP = min([T.p_bonf_susc, T.p_bonf_infl, T.p_bonf_BC], [], 2);
             [~, ord] = sort(minBonfP, 'ascend');
             T = T(ord, :);
             writetable(T, fullfile(resultsDir, [baseName '_outliers.csv']));
@@ -226,6 +276,11 @@ summary.D_susc_arnold_mean  = D_susc_arnold_mean;
 summary.D_susc_arnold_std   = D_susc_arnold_std;
 summary.D_infl_arnold_mean  = D_infl_arnold_mean;
 summary.D_infl_arnold_std   = D_infl_arnold_std;
+summary.BC_anderson         = BC_anderson;
+summary.BC_arnold           = BC_arnold;
+summary.BC_arnold_mean      = BC_arnold_mean;
+summary.BC_arnold_std       = BC_arnold_std;
+summary.hasBC               = hasBC;
 summary.trivialAcrossArnold = trivialAcrossArnold;
 summary.deviations          = deviations;
 summary.zThreshold          = opts.ZThreshold;
@@ -251,6 +306,30 @@ end
 end
 
 %% ------------------------------------------------------------------
+function M = packCentrality(loaded, mask, fieldName, N)
+%PACKCENTRALITY Pull a named field from loaded{i}.centralities into an
+% N-by-K matrix. Mice without a centralities struct, or without the named
+% field, contribute an all-NaN column so they are silently excluded by
+% downstream NaN-aware aggregation.
+idx = find(mask);
+M = NaN(N, numel(idx));
+for ii = 1:numel(idx)
+    r = loaded{idx(ii)};
+    if ~isfield(r, 'centralities') || ~isstruct(r.centralities)
+        continue;
+    end
+    if ~isfield(r.centralities, fieldName)
+        continue;
+    end
+    v = r.centralities.(fieldName);
+    if numel(v) ~= N
+        continue;
+    end
+    M(:, ii) = v(:);
+end
+end
+
+%% ------------------------------------------------------------------
 function z = safeZ(x, mu, sigma)
 %SAFEZ Per-node z-score with NaN where sigma == 0 or sigma is NaN
 % (i.e. the cohort contains a single non-NaN value or all-NaN node).
@@ -260,13 +339,13 @@ z(ok) = (x(ok) - mu(ok)) ./ sigma(ok);
 end
 
 %% ------------------------------------------------------------------
-function plotComparisonPanel(panelIdx, anderVals, arnoldVals, ...
+function plotComparisonPanel(nPanels, panelIdx, anderVals, arnoldVals, ...
     arnMean, arnStd, zScore, labels, trivial, outlierMask, panelTitle, ylab)
 %PLOTCOMPARISONPANEL Render one centrality comparison panel into the
-% panelIdx-th subplot of a 2x1 layout.
+% panelIdx-th subplot of an nPanels-by-1 layout.
 % outlierMask: logical N-vector, pre-computed from Bonferroni correction.
 
-ax = subplot(2, 1, panelIdx); hold(ax, 'on');
+ax = subplot(nPanels, 1, panelIdx); hold(ax, 'on');
 N = numel(anderVals);
 x = 1:N;
 

@@ -1,14 +1,30 @@
-%% runAllMiceSection45.m
-% Apply the Liao §4.5 workflow to every Daria/Anderson mouse coarse
-% connectome under data/, then summarise which nodes "stand out"
-% (high stability susceptibility / influence centrality, equivalently
+function runAllMiceSection45(varargin)
+%RUNALLMICESECTION45  Apply the Liao §4.5 workflow to every Daria/Anderson
+% mouse coarse connectome under data/, then summarise which nodes "stand
+% out" (high stability susceptibility / influence centrality, equivalently
 % low critical excitability x^c_{0,i}) and on which mice.
 %
 % Outputs (under results/):
-%   section45_<mouseId>_tvb_results.mat   per-mouse results struct
-%   section45_<mouseId>_tvb_figure.{fig,png}
-%   section45_summary_topnodes.csv        per-mouse top-K rankings
-%   section45_summary_overview.{fig,png}  cross-mouse overview plots
+%   section45_<mouseId>_<scheme>_results.mat   per-mouse results struct
+%   section45_<mouseId>_<scheme>_figure.{fig,png}
+%   section45_summary_topnodes_<scheme>.csv    per-mouse top-K rankings
+%   section45_summary_overview_<scheme>.{fig,png}
+%
+% Name-value options:
+%   Normalisation : 'parkes' (default) | 'tvb' | 'column' | 'none'
+%   ParkesC       : 1.0     c parameter for the 'parkes' scheme
+%   ColScale      : 0.95    target column sum for the 'column' scheme
+%   TopK          : 10      number of top nodes to print/save per mouse
+
+p = inputParser;
+addParameter(p, 'Normalisation', 'tvb', @(s) ischar(s) || isstring(s));
+addParameter(p, 'ParkesC',       1.0,      @isscalar);
+addParameter(p, 'ColScale',      0.95,     @isscalar);
+addParameter(p, 'TopK',          10,       @isscalar);
+parse(p, varargin{:});
+opts          = p.Results;
+normalisation = char(opts.Normalisation);
+topK          = opts.TopK;
 
 resultsDir = setupMousePaths();
 
@@ -16,8 +32,6 @@ mice = listAvailableMice();
 if isempty(mice)
     error('runAllMiceSection45: no mouse CSVs found under data/.');
 end
-topK = 10;
-normalisation = 'tvb';
 
 allResults = cell(numel(mice), 1);
 totalTic = tic;
@@ -27,6 +41,8 @@ for m = 1:numel(mice)
     try
         allResults{m} = runMouseSection45(mouseId, ...
             'Normalisation', normalisation, ...
+            'ParkesC',       opts.ParkesC, ...
+            'ColScale',      opts.ColScale, ...
             'SaveResults',   true, ...
             'Plot',          true, ...
             'Verbose',       true);
@@ -145,15 +161,40 @@ writetable(T, csvFile);
 fprintf('\nWrote summary table %s\n', csvFile);
 
 %% Cross-mouse overview figure
-isParkes = strcmpi(normalisation, 'parkes');
-% Parkes on symmetric K: C=C^T so D(k->)=D(->i); only show D(->i).
-% TVB: x0^c panel + both centrality panels (3 total).
-nPanels = 3 - 2*isParkes;   % 1 for Parkes, 3 for TVB
-
+isParkes  = strcmpi(normalisation, 'parkes');
+isColumn  = ismember(lower(normalisation), {'column', 'col', 'colnorm'});
+isLinear  = isParkes || isColumn;
+% Parkes on symmetric K: D(k->)=D(->i); only show D(->i) (1 panel).
+% Column: D(k->) != D(->i), no x0; show both D panels (2 panels).
+% TVB / non-linear: x0^c + both centrality panels (3 panels).
 overviewFig = figure('Name', sprintf('§4.5 mouse overview (%s)', normalisation), ...
                      'Position', [80 80 1600 700]);
 
-if ~isParkes
+if isParkes
+    subplot(1, 1, 1);
+    imagesc(D_susc_all);
+    yticks(1:N); yticklabels(canonicalLabels);
+    set(gca, 'FontSize', 6, 'YDir', 'normal');
+    xticks(1:M); xticklabels(mice); xtickangle(45);
+    colorbar; colormap(gca, parula);
+    title('D(\rightarrow i)  (susceptibility)');
+elseif isColumn
+    subplot(1, 2, 1);
+    imagesc(D_susc_all);
+    yticks(1:N); yticklabels(canonicalLabels);
+    set(gca, 'FontSize', 6, 'YDir', 'normal');
+    xticks(1:M); xticklabels(mice); xtickangle(45);
+    colorbar; colormap(gca, parula);
+    title('D(\rightarrow i)  (susceptibility)');
+
+    subplot(1, 2, 2);
+    imagesc(D_infl_all);
+    yticks(1:N); yticklabels(canonicalLabels);
+    set(gca, 'FontSize', 6, 'YDir', 'normal');
+    xticks(1:M); xticklabels(mice); xtickangle(45);
+    colorbar; colormap(gca, parula);
+    title('D(k \rightarrow)  (influence)');
+else
     subplot(1, 3, 1);
     imagesc(x0_crit_all);
     yticks(1:N); yticklabels(canonicalLabels);
@@ -177,14 +218,6 @@ if ~isParkes
     xticks(1:M); xticklabels(mice); xtickangle(45);
     colorbar; colormap(gca, parula);
     title('D(k \rightarrow)  (influence)');
-else
-    subplot(1, 1, 1);
-    imagesc(D_susc_all);
-    yticks(1:N); yticklabels(canonicalLabels);
-    set(gca, 'FontSize', 6, 'YDir', 'normal');
-    xticks(1:M); xticklabels(mice); xtickangle(45);
-    colorbar; colormap(gca, parula);
-    title('D(\rightarrow i)  (susceptibility)');
 end
 
 if isParkes
@@ -207,6 +240,7 @@ save(fullfile(resultsDir, sprintf('section45_summary_%s.mat', normalisation)), .
     'mean_rank_susc', 'mean_rank_infl', 'mean_rank_x0', 'normalisation');
 
 fprintf('\nDone.\n');
+end
 
 %% ------------------------------------------------------------------
 function r = rankWithNaN(values, dir)
