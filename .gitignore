@@ -4,3 +4,11 @@ epileptor-experiment/results/*
 
 mouse-epilepsy-daria-anderson-experiment/results/*
 !mouse-epilepsy-daria-anderson-experiment/results/.gitkeep
+
+# Third-party Brain Connectivity Toolbox (install locally; see docs/BCT.md)
+2019_03_03_BCT/
+
+# Debug snapshot written by covariancesGaussianNet on non-stationary C
+nonconvergentNetwork.mat
+
+references/

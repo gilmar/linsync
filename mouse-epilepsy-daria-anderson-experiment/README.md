@@ -2,11 +2,16 @@
 
 Apply the §4.5 workflow from Liao's thesis (originally implemented for human data in `epileptor-experiment/runEZ1_section45.m`) to mouse coarse-grained connectomes (66 brain-atlas regions per animal).
 
+## Prerequisites
+
+- **MATLAB Optimization Toolbox** — `fsolve` for Epileptor fixed points (`tvb` / default schemes).
+- **Brain Connectivity Toolbox (BCT)** — optional for stability-only runs; **required** for betweenness/closeness in `computeNetworkCentralities` and for the betweenness panel in `compareAndersonVsArnold`. BCT is **not** included in git; install locally under `../2019_03_03_BCT/` — see [docs/BCT.md](../docs/BCT.md).
+
 ## Layout
 
 | Path | Role |
 |------|------|
-| `setupMousePaths.m` | Adds linsync root (shared Epileptor / §4.5 helpers), BCT, and this folder to the MATLAB path |
+| `setupMousePaths.m` | Adds linsync root, optional `../2019_03_03_BCT/` (BCT), and this folder to the MATLAB path |
 | `loadMouseConnectome.m` | Loads `data/<mouseId>/fine_family_labelled_coarse.csv` and returns `K`, region labels, and a `info.isTrivial` flag for empty rows |
 | `compareMouseHeatmap.m` | Sanity check: render `imagesc(K)` for every mouse so you can compare visually with `data/<mouseId>/coarse_connectome_<mouseid>.png` |
 | `runMouseSection45.m` | Per-mouse driver -- mirrors `runEZ1_section45.m`. Healthy 1-D Epileptor on K, computes \(D(\to i)\), \(D(k \to)\), per-node critical excitability \(x^{c}_{0,i}\) |
