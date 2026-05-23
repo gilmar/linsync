@@ -60,11 +60,11 @@ if cfg.pipelineRunHeatmap
         'ResultsDir', resultsDir), 'compareMouseHeatmap', cfg.pipelineStopOnError);
 end
 
-if cfg.pipelineRunSection45
-    manifest.steps(end+1) = runPipelineStep(@() runAllMiceSection45(commonArgs{:}), ...
-        'runAllMiceSection45', cfg.pipelineStopOnError);
+if cfg.pipelineRunStabilityCentralities
+    manifest.steps(end+1) = runPipelineStep(@() runAllMiceStabilityCentralities(commonArgs{:}), ...
+        'runAllMiceStabilityCentralities', cfg.pipelineStopOnError);
     manifest.steps(end+1) = runPipelineStep(@() assertCohortResultsComplete(resultsDir, scheme, mice), ...
-        'postflight_section45', cfg.pipelineStopOnError);
+        'postflight_stabilityCentralities', cfg.pipelineStopOnError);
 end
 
 if cfg.pipelineRunCentralityCorr
@@ -136,11 +136,11 @@ if cond, s = a; else, s = b; end
 end
 
 function assertCohortResultsComplete(resultsDir, scheme, mice)
-pattern = sprintf('section45_*_%s_results.mat', scheme);
+pattern = sprintf('stabilityCentralities_*_%s_results.mat', scheme);
 files = dir(fullfile(resultsDir, pattern));
 if numel(files) < numel(mice)
     error('runMouseExperiment:IncompleteCohort', ...
-        'Expected %d section45 results for scheme "%s", found %d in %s.', ...
+        'Expected %d stabilityCentralities results for scheme "%s", found %d in %s.', ...
         numel(mice), scheme, numel(files), resultsDir);
 end
 end

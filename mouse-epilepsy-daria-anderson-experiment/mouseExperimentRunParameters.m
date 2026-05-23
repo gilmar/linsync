@@ -2,7 +2,7 @@ function varargout = mouseExperimentRunParameters(action, varargin)
 %MOUSEEXPERIMENTRUNPARAMETERS  Build and save provenance for experiment runs.
 %
 %   runParams = mouseExperimentRunParameters('buildFromConfig', cfg, ...)
-%   runParams = mouseExperimentRunParameters('buildFromSection45', opts, mouseId)
+%   runParams = mouseExperimentRunParameters('buildFromStabilityCentralities', opts, mouseId)
 %   runParams = mouseExperimentRunParameters('merge', runParams, patchStruct)
 %   mouseExperimentRunParameters('save', resultsDir, runParams)
 %
@@ -14,8 +14,8 @@ function varargout = mouseExperimentRunParameters(action, varargin)
 switch lower(action)
     case 'buildfromconfig'
         varargout{1} = buildFromConfig(varargin{:});
-    case 'buildfromsection45'
-        varargout{1} = buildFromSection45(varargin{:});
+    case 'buildfromstabilitycentralities'
+        varargout{1} = buildFromStabilityCentralities(varargin{:});
     case 'buildfromcompareanderson'
         varargout{1} = buildFromCompareAnderson(varargin{:});
     case 'buildfromcomparecentrality'
@@ -40,7 +40,7 @@ addParameter(p, 'Mice', {{}}, @(c) iscell(c) || isstring(c));
 parse(p, varargin{:});
 
 runParams = struct();
-runParams.schemaVersion = 1;
+runParams.schemaVersion = 2;
 runParams.recordedAt = datestr(now, 'yyyy-mm-dd HH:MM:SS');
 runParams.experimentName = cfg.experimentName;
 runParams.experimentDescription = cfg.experimentDescription;
@@ -59,7 +59,7 @@ runParams.cohort.nMice = numel(runParams.cohort.mice);
 
 runParams.normalisation = cfg.normalisation;
 
-runParams.section45 = struct( ...
+runParams.stabilityCentralities = struct( ...
     'normalisation', cfg.normalisation, ...
     'parkesC', cfg.parkesC, ...
     'colScale', cfg.colScale, ...
@@ -84,7 +84,7 @@ runParams.comparison = struct( ...
 
 runParams.pipeline = struct( ...
     'runHeatmap', cfg.pipelineRunHeatmap, ...
-    'runSection45', cfg.pipelineRunSection45, ...
+    'runStabilityCentralities', cfg.pipelineRunStabilityCentralities, ...
     'runCentralityCorr', cfg.pipelineRunCentralityCorr, ...
     'runAndersonVsArnold', cfg.pipelineRunAndersonVsArnold, ...
     'runDstCohort', cfg.pipelineRunDstCohort, ...
@@ -100,10 +100,10 @@ runParams.config = cfg;
 end
 
 %% ------------------------------------------------------------------
-function runParams = buildFromSection45(opts, mouseId)
-% opts: inputParser Results from runMouseSection45
+function runParams = buildFromStabilityCentralities(opts, mouseId)
+% opts: inputParser Results from runMouseStabilityCentralities
 runParams = struct();
-runParams.schemaVersion = 1;
+runParams.schemaVersion = 2;
 runParams.recordedAt = datestr(now, 'yyyy-mm-dd HH:MM:SS');
 runParams.experimentName = '';
 runParams.configFile = '';
@@ -114,7 +114,7 @@ end
 runParams.environment = environmentBlock();
 runParams.cohort = struct('mice', {mouseId}, 'nMice', 1);
 runParams.normalisation = char(opts.Normalisation);
-runParams.section45 = struct( ...
+runParams.stabilityCentralities = struct( ...
     'normalisation', char(opts.Normalisation), ...
     'parkesC', opts.ParkesC, ...
     'colScale', opts.ColScale, ...

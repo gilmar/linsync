@@ -7,7 +7,7 @@ function summary = compareDstAcrossCohort(varargin)
 % how much the full eigenvalue spectrum (not just the leading mode)
 % amplifies the stationary covariance over its uncoupled baseline.
 %
-% Reads section45_<mouseId>_<scheme>_results.mat under results/, pulls
+% Reads stabilityCentralities_<mouseId>_<scheme>_results.mat under results/, pulls
 % results.D_st_healthy from each, and produces:
 %   * a printed table to the console
 %   * a CSV  (D_st_cohort_<scheme>.csv)
@@ -35,7 +35,7 @@ scheme = char(opts.Normalisation);
 
 resultsDir = resolveMouseResultsDir(opts.ResultsDir);
 
-pattern = sprintf('section45_*_%s_results.mat', scheme);
+pattern = sprintf('stabilityCentralities_*_%s_results.mat', scheme);
 files = dir(fullfile(resultsDir, pattern));
 if isempty(files)
     error('compareDstAcrossCohort:NoResults', ...

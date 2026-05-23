@@ -4,7 +4,7 @@ function [z_fixed, C_healthy, rho_healthy] = healthyEpileptorCoupling(K, x0Base,
 %   Solve the 1-D Epileptor fixed point with x0_i = x0Base for all nodes,
 %   form the effective coupling matrix C, and error if rho(C) >= 1.
 %
-%   Optional errorId prefixes error identifiers (e.g. 'runEZ1_section45').
+%   Optional errorId prefixes error identifiers (e.g. 'runEZ1_stabilityCentralities').
 
 if nargin < 4 || isempty(errorId)
     errorId = 'healthyEpileptorCoupling';

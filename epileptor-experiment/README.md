@@ -14,7 +14,7 @@ This folder is self-contained except for the parent **linsync** toolkit. Run scr
 | Path | Role |
 |------|------|
 | `runEZ1.m` | Parameter sweep: fixed point → coupling matrix **C** → \(D_{\mathrm{st}}\), eigenvalues, optional transpose-Ω diagnostics |
-| `runEZ1_section45.m` | Reproduces **Chapter 4 §4.5** (Fig. 4.2) of Liao (2026): computes per-node stability susceptibility \(D(\to i)\) and influence \(D(k \to)\) from the healthy P1 network, sweeps each node's \(x_0\) to find critical \(x^{c}_{0,i}\) (where \(\rho(C) \ge 1\)), and renders the two-panel scatter plot |
+| `runEZ1_stabilityCentralities.m` | Stability centralities for Patient 1 (thesis Fig. 4.2): per-node \(D(\to i)\) and \(D(k \to)\) from the healthy P1 network, per-node critical \(x^{c}_{0,i}\) sweep (\(\rho(C) \ge 1\)), two-panel scatter plot |
 | `JL_playing.m` | Single baseline + virtual resections, \(D_{\mathrm{st}}\) and per-node Ω diagonals |
 | `main1K12_JLadjusted.m` | Resection scenarios and critical \(x_0\) for EZ (fsolve failure boundary) |
 | `loadPatientWeights.m`, `setupEpileptorPaths.m` | Data loading and path setup |

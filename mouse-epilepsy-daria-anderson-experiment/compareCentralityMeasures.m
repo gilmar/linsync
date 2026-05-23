@@ -13,9 +13,9 @@ function summary = compareCentralityMeasures(varargin)
 %   3) Bar chart -- mean +- SD correlation of D(->i) and D(k->) with
 %      each classical centrality across mice  (Fig 4 style)
 %
-% Reads section45_<mouseId>_<scheme>_results.mat under results/. Each
+% Reads stabilityCentralities_<mouseId>_<scheme>_results.mat under results/. Each
 % file must contain the `results.centralities` field added by
-% runMouseSection45 (re-run runAllMiceSection45 if missing).
+% runMouseStabilityCentralities (re-run runAllMiceStabilityCentralities if missing).
 %
 % Outputs (under results/):
 %   centrality_corr_<mouseId>_<scheme>.{fig,png}   -- per-mouse heatmap
@@ -64,11 +64,11 @@ end
 resultsDir = resolveMouseResultsDir(opts.ResultsDir);
 
 %% Discover and load per-mouse result files
-pattern = sprintf('section45_*_%s_results.mat', scheme);
+pattern = sprintf('stabilityCentralities_*_%s_results.mat', scheme);
 files = dir(fullfile(resultsDir, pattern));
 if isempty(files)
     error('compareCentralityMeasures:NoResults', ...
-        'No files matching %s found under %s. Run runAllMiceSection45 first.', ...
+        'No files matching %s found under %s. Run runAllMiceStabilityCentralities first.', ...
         pattern, resultsDir);
 end
 
@@ -83,7 +83,7 @@ for k = 1:numel(files)
     r = s.results;
     if ~isfield(r, 'centralities') || isempty(fieldnames(r.centralities))
         warning('compareCentralityMeasures:NoCentralities', ...
-            'Mouse %s has no centralities field -- skipped. Re-run runMouseSection45.', ...
+            'Mouse %s has no centralities field -- skipped. Re-run runMouseStabilityCentralities.', ...
             r.mouseId);
         continue;
     end
@@ -92,7 +92,7 @@ for k = 1:numel(files)
 end
 if isempty(loaded)
     error('compareCentralityMeasures:Empty', ...
-        'No mice with the centralities field. Re-run runAllMiceSection45.');
+        'No mice with the centralities field. Re-run runAllMiceStabilityCentralities.');
 end
 nMice = numel(loaded);
 N     = loaded{1}.N;

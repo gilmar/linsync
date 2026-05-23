@@ -1,5 +1,5 @@
-function results = runMouseSection45(mouseId, varargin)
-%RUNMOUSESECTION45  Apply the §4.5 (Liao thesis) workflow to one mouse.
+function results = runMouseStabilityCentralities(mouseId, varargin)
+%RUNMOUSESTABILITYCENTRALITIES  Stability centralities and critical x0 for one mouse.
 %
 %   For the chosen mouse:
 %     1. Load the 66x66 weighted coarse connectome K.
@@ -14,11 +14,11 @@ function results = runMouseSection45(mouseId, varargin)
 %        with all others held at -2.3 and find the smallest x0_i
 %        at which rho(C) >= 1 (critical excitability x^c_{0,i}),
 %        coarse + bisection refinement.
-%     6. Render the §4.5 two-panel scatter and persist results.
+%     6. Render the two-panel scatter and persist results.
 %
 %   Usage
-%     results = runMouseSection45('Anderson_1');
-%     results = runMouseSection45('Arnold_2', ...
+%     results = runMouseStabilityCentralities('Anderson_1');
+%     results = runMouseStabilityCentralities('Arnold_2', ...
 %                  'Normalisation', 'tvb', ...
 %                  'x0Upper', -1.0, ...
 %                  'Plot', true, 'SaveResults', true);
@@ -95,20 +95,20 @@ if isLinearScheme
         else
             hint = 'Try a smaller ColScale (default 0.95).';
         end
-        error('runMouseSection45:LinearSchemeUnstable', ...
+        error('runMouseStabilityCentralities:LinearSchemeUnstable', ...
             '%s-normalised %s has rho(C) = %.4f >= 1. %s', ...
             schemeLower, mouseId, rho_healthy, hint);
     end
 else
     [z_fixed_healthy, C_healthy, rho_healthy] = healthyEpileptorCoupling( ...
-        K, opts.x0Base, opts.tau0, 'runMouseSection45');
+        K, opts.x0Base, opts.tau0, 'runMouseStabilityCentralities');
     if opts.Verbose
         fprintf('Healthy rho(C) = %.6f\n', rho_healthy);
     end
 end
 
 %% D(-> i), D(k ->) from healthy C
-stab = computeStabilityCentralities(C_healthy, opts.MaxK, 'runMouseSection45');
+stab = computeStabilityCentralities(C_healthy, opts.MaxK, 'runMouseStabilityCentralities');
 D_susceptibility = stab.D_susceptibility;
 D_influence      = stab.D_influence;
 Omega            = stab.Omega;
@@ -127,7 +127,7 @@ try
         fprintf('Classical centralities computed on C_healthy.\n');
     end
 catch ME
-    warning('runMouseSection45:Centralities', ...
+    warning('runMouseStabilityCentralities:Centralities', ...
         'computeNetworkCentralities failed: %s', ME.message);
     classicalCentralities = struct();
 end
@@ -168,7 +168,7 @@ end
 fig = [];
 if opts.Plot
     if isParkes
-        fig = figure('Name', sprintf('§4.5 mouse %s (Parkes)', mouseId), ...
+        fig = figure('Name', sprintf('Stability centralities — mouse %s (Parkes)', mouseId), ...
                      'Position', [100 100 800 520]);
 
         bar(D_susceptibility, 'FaceColor', [0.20 0.40 0.80]);
@@ -181,7 +181,7 @@ if opts.Plot
                  'D(\rightarrow i)  (susceptibility);  D(k\rightarrow) \equiv D(\rightarrow i) for symmetric K'}, ...
                 'Interpreter', 'tex');
     elseif isColumn
-        fig = figure('Name', sprintf('§4.5 mouse %s (column)', mouseId), ...
+        fig = figure('Name', sprintf('Stability centralities — mouse %s (column)', mouseId), ...
                      'Position', [100 100 1300 520]);
 
         subplot(1, 2, 1);
@@ -203,8 +203,9 @@ if opts.Plot
     else
         subjectLabel = sprintf('Mouse %s, normalisation = %s', ...
             strrep(mouseId, '_', '\_'), opts.Normalisation);
-        fig = plotSection45ScatterFigure(x0_crit, D_susceptibility, D_influence, ...
-            subjectLabel, opts.x0Base, sprintf('§4.5 mouse %s', mouseId));
+        fig = plotStabilityScatterFigure(x0_crit, D_susceptibility, D_influence, ...
+            subjectLabel, opts.x0Base, ...
+            sprintf('Stability centralities — mouse %s', mouseId));
     end
 end
 
@@ -244,15 +245,15 @@ results.err_trans        = err_trans;
 results.sweepTime        = sweepTime;
 
 if isempty(opts.RunParameters)
-    results.runParameters = mouseExperimentRunParameters('buildFromSection45', opts, mouseId);
+    results.runParameters = mouseExperimentRunParameters('buildFromStabilityCentralities', opts, mouseId);
 else
     results.runParameters = mouseExperimentRunParameters('merge', opts.RunParameters, ...
-        struct('section45', struct('mouseId', mouseId)));
+        struct('stabilityCentralities', struct('mouseId', mouseId)));
 end
 
 %% Persist
 if opts.SaveResults
-    baseName = sprintf('section45_%s_%s', mouseId, opts.Normalisation);
+    baseName = sprintf('stabilityCentralities_%s_%s', mouseId, opts.Normalisation);
     save(fullfile(resultsDir, [baseName '_results.mat']), 'results');
     if opts.Plot && ~isempty(fig)
         savefig(fig, fullfile(resultsDir, [baseName '_figure.fig']));

@@ -1,6 +1,6 @@
 # Mouse epilepsy connectome experiment (Daria / Anderson cohort)
 
-Apply the §4.5 workflow from Liao's thesis (originally implemented for human data in `epileptor-experiment/runEZ1_section45.m`) to mouse coarse-grained connectomes (66 brain-atlas regions per animal).
+Apply the **stability centralities** workflow (per-node \(D(\to i)\), \(D(k \to)\), and critical \(x_0^c\) where applicable) to mouse coarse-grained connectomes (66 brain-atlas regions per animal). The human reference implementation is `epileptor-experiment/runEZ1_stabilityCentralities.m` (formerly thesis §4.5 / `runEZ1_section45`).
 
 ## Prerequisites
 
@@ -60,13 +60,13 @@ When pipeline flags are `true` (defaults), the orchestrator runs these steps **i
 | Step | Script | Output (examples) |
 |------|--------|-------------------|
 | Optional QC | `compareMouseHeatmap` | `mouse_heatmaps_overview_*.{fig,png}` |
-| Per-mouse §4.5 | `runAllMiceSection45` | `section45_<mouse>_<scheme>_results.mat`, figures, summary CSV/overview |
+| Per-mouse stability centralities | `runAllMiceStabilityCentralities` | `stabilityCentralities_<mouse>_<scheme>_results.mat`, figures, summary CSV/overview |
 | Centrality correlations | `compareCentralityMeasures` | `centrality_corr_*` |
 | Anderson vs Arnold | `compareAndersonVsArnold` | `compare_anderson_vs_arnold_*` |
 | Network \(D_{\mathrm{st}}\) | `compareDstAcrossCohort` | `D_st_cohort_*` |
 | Console reports | `reportTopNodes`, `reportAndersonOutliers` | `reports.log` |
 
-After §4.5, the orchestrator checks that every available mouse produced a `section45_*_<scheme>_results.mat` file. Step success and timing are recorded in `run_manifest.mat`.
+After the stability-centralities step, the orchestrator checks that every available mouse produced a `stabilityCentralities_*_<scheme>_results.mat` file. Step success and timing are recorded in `run_manifest.mat`.
 
 Disable steps with `pipeline.run*` keys in the properties file (e.g. `pipeline.runHeatmap=true` for connectome QC only).
 
@@ -86,19 +86,19 @@ results/initial_column/
   run_manifest.mat               # pipeline steps + runParams + cfg
   reports.log                    # reportTopNodes / reportAndersonOutliers output
 
-  section45_Anderson_1_column_results.mat
-  section45_Anderson_1_column_figure.{fig,png}
+  stabilityCentralities_Anderson_1_column_results.mat
+  stabilityCentralities_Anderson_1_column_figure.{fig,png}
   ...                            # one result set per mouse
-  section45_summary_topnodes_column.csv
-  section45_summary_overview_column.{fig,png}
-  section45_summary_column.mat
+  stabilityCentralities_summary_topnodes_column.csv
+  stabilityCentralities_summary_overview_column.{fig,png}
+  stabilityCentralities_summary_column.mat
 
   centrality_corr_*.mat / .fig / .png
   compare_anderson_vs_arnold_*
   D_st_cohort_column.csv / .mat / .fig / .png
 ```
 
-Legacy workflows that call `runAllMiceSection45` without `ResultsDir` still write into the flat `results/` directory. Prefer the orchestrator for new work.
+Legacy workflows that call `runAllMiceStabilityCentralities` without `ResultsDir` still write into the flat `results/` directory. Prefer the orchestrator for new work.
 
 ---
 
@@ -121,9 +121,9 @@ Every orchestrated run records **all parameters** used to generate the results, 
 - **Environment:** MATLAB version, computer arch, hostname, user, toolkit paths
 - **Cohort:** list of mouse IDs and count
 - **`normalisation`:** scheme for this experiment
-- **`section45`:** `parkesC`, `colScale`, `x0Base` / `x0Upper` / `x0Step`, `bisectTol`, `maxK`, `tau0`, `topK`, `discreteTime` (= `false`), `fsolve` tolerances, classical centrality defaults (`alphaPR`, `alphaKZ`, …)
+- **`stabilityCentralities`:** `parkesC`, `colScale`, `x0Base` / `x0Upper` / `x0Step`, `bisectTol`, `maxK`, `tau0`, `topK`, `discreteTime` (= `false`), `fsolve` tolerances, classical centrality defaults (`alphaPR`, `alphaKZ`, …)
 - **`comparison`:** `corrType`, `alpha` (Bonferroni), `zThreshold`, centrality-plot options
-- **`pipeline`:** which steps were enabled (`runSection45`, `runCentralityCorr`, …)
+- **`pipeline`:** which steps were enabled (`runStabilityCentralities`, `runCentralityCorr`, …)
 - **`output`:** `saveResults`, `plot`, `verbose`
 - **`config`:** full parsed struct from `loadMouseExperimentConfig`
 
@@ -135,8 +135,8 @@ So a single per-mouse file remains self-describing if copied elsewhere:
 
 | File pattern | Field |
 |--------------|--------|
-| `section45_<mouse>_<scheme>_results.mat` | `results.runParameters` |
-| `section45_summary_<scheme>.mat` | `runParameters` |
+| `stabilityCentralities_<mouse>_<scheme>_results.mat` | `results.runParameters` |
+| `stabilityCentralities_summary_<scheme>.mat` | `runParameters` |
 | `compare_anderson_vs_arnold_<scheme>.mat` | `runParameters` |
 | `centrality_corr_<scheme>.mat` | `runParameters` |
 | `D_st_cohort_<scheme>.mat` | `runParameters` |
@@ -147,7 +147,7 @@ Manual runs (without the orchestrator) still attach `runParameters` built from e
 
 ```matlab
 load('results/initial_column/experiment_parameters.mat', 'runParams')
-disp(runParams.section45)
+disp(runParams.stabilityCentralities)
 disp(runParams.comparison)
 
 % Or open experiment_parameters.json in any text editor
@@ -166,7 +166,7 @@ Files live in `configs/`. Syntax: `key=value`, `#` comments, one key per line.
 | `experiment.name` | Folder name under `results/` (e.g. `initial_column` or `2026-05-23_14-30-00_column`) |
 | `experiment.description` | Free-text note stored in `runParams` |
 
-### Normalisation and §4.5
+### Normalisation and stability centralities
 
 | Key | Default | Description |
 |-----|---------|-------------|
@@ -194,15 +194,15 @@ Files live in `configs/`. Syntax: `key=value`, `#` comments, one key per line.
 | Key | Default | Description |
 |-----|---------|-------------|
 | `pipeline.runHeatmap` | `false` | Run `compareMouseHeatmap` (scheme-independent QC) |
-| `pipeline.runSection45` | `true` | Per-mouse + cohort summary |
+| `pipeline.runStabilityCentralities` | `true` | Per-mouse + cohort summary |
 | `pipeline.runCentralityCorr` | `true` | Stability vs classical centrality correlations |
 | `pipeline.runAndersonVsArnold` | `true` | Strain comparison figures and outlier CSVs |
 | `pipeline.runDstCohort` | `true` | Network-level \(D_{\mathrm{st}}\) bar chart |
 | `pipeline.runReports` | `true` | `reportTopNodes` + `reportAndersonOutliers` → `reports.log` |
 | `pipeline.stopOnError` | `false` | If `true`, abort the experiment on first failed step |
 | `save.results` | `true` | Write `.mat` / figures / CSVs |
-| `plot` | `true` | Generate figures during §4.5 |
-| `verbose` | `true` | Per-node console output in §4.5 |
+| `plot` | `true` | Generate figures during stability-centralities step |
+| `verbose` | `true` | Per-node console output in stability-centralities step |
 
 ---
 
@@ -218,8 +218,8 @@ Files live in `configs/`. Syntax: `key=value`, `#` comments, one key per line.
 | `runMouseExperiment.m` | **Orchestrator** — full pipeline from one config file |
 | `runAllMouseExperiments.m` | Run every `configs/*.properties` except the template |
 | `loadMouseConnectome.m` | Load `data/<mouseId>/fine_family_labelled_coarse.csv` |
-| `runMouseSection45.m` | Per-mouse §4.5 driver |
-| `runAllMiceSection45.m` | Loop cohort + cross-mouse summary |
+| `runMouseStabilityCentralities.m` | Per-mouse stability centralities driver |
+| `runAllMiceStabilityCentralities.m` | Loop cohort + cross-mouse summary |
 | `compareMouseHeatmap.m` | Visual QC vs reference PNGs |
 | `compareCentralityMeasures.m` | Correlation heatmaps / bar charts |
 | `compareAndersonVsArnold.m` | Anderson vs Arnold per-node plots + outliers |
@@ -244,7 +244,7 @@ This is a 67-line CSV: header row + 66 data rows. Column 1 is the row label (`L-
 
 Placeholder rows (`L-BACKGROUND`, `R-BACKGROUND`, `*_MASK`) are flagged in `info.isTrivial` and skipped in the per-node \(x_0^c\) sweep.
 
-## Workflow per mouse (§4.5)
+## Workflow per mouse (stability centralities)
 
 1. Load the 66×66 raw weighted matrix `K_raw`.
 2. Normalise via `applyConnectomeNormalisation` (see scheme table below).
@@ -264,15 +264,15 @@ Placeholder rows (`L-BACKGROUND`, `R-BACKGROUND`, `*_MASK`) are flagged in `info
 
 ## Cross-mouse summary
 
-`runAllMiceSection45` produces (under the experiment results folder):
+`runAllMiceStabilityCentralities` produces (under the experiment results folder):
 
-- `section45_summary_topnodes_<scheme>.csv` — mean ranks and per-mouse values
-- `section45_summary_overview_<scheme>.{fig,png}` — region × mouse heatmaps (1–3 panels depending on scheme)
-- `section45_summary_<scheme>.mat` — packed matrices + `runParameters`
+- `stabilityCentralities_summary_topnodes_<scheme>.csv` — mean ranks and per-mouse values
+- `stabilityCentralities_summary_overview_<scheme>.{fig,png}` — region × mouse heatmaps (1–3 panels depending on scheme)
+- `stabilityCentralities_summary_<scheme>.mat` — packed matrices + `runParameters`
 
 ## Anderson vs Arnold comparison
 
-`compareAndersonVsArnold` loads per-mouse `section45_*_results.mat` and, for each Anderson mouse, plots **three panels**: \(D(\to i)\), \(D(k \to)\), and betweenness centrality vs the Arnold cohort mean ± SD.
+`compareAndersonVsArnold` loads per-mouse `stabilityCentralities_*_results.mat` and, for each Anderson mouse, plots **three panels**: \(D(\to i)\), \(D(k \to)\), and betweenness centrality vs the Arnold cohort mean ± SD.
 
 Outlier **flagging** uses **Bonferroni correction** at `alpha` from the config (default `0.05`), not a simple \|z\| > `z.threshold`. The `z.threshold` key controls what `reportAndersonOutliers` **displays** in `reports.log`.
 
@@ -293,10 +293,10 @@ setupMousePaths();
 resultsDir = setupMousePaths('ExperimentName', 'my_manual_run');
 
 compareMouseHeatmap('ResultsDir', resultsDir);
-runAllMiceSection45('Normalisation', 'column', 'ResultsDir', resultsDir);
+runAllMiceStabilityCentralities('Normalisation', 'column', 'ResultsDir', resultsDir);
 compareAndersonVsArnold('Normalisation', 'column', 'ResultsDir', resultsDir);
 ```
 
-Per-mouse §4.5 files will contain `results.runParameters` built from that script’s options only (no full experiment config unless you pass `'RunParameters', ...`).
+Per-mouse stability-centralities files will contain `results.runParameters` built from that script’s options only (no full experiment config unless you pass `'RunParameters', ...`).
 
 **Runtime:** ~10 min per mouse for `tvb`; ~1 hour for all five mice at default settings.

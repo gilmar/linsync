@@ -10,8 +10,8 @@ function summary = compareAndersonVsArnold(varargin)
 % (Spearman rho >= 0.96), while BC carries genuinely independent
 % information (rho ~ 0.78). See results/centrality_comparison_analysis.md.
 %
-% Reads the per-mouse results that runAllMiceSection45 writes under
-% results/ (section45_<mouseId>_<scheme>_results.mat). For each Anderson
+% Reads the per-mouse results that runAllMiceStabilityCentralities writes under
+% results/ (stabilityCentralities_<mouseId>_<scheme>_results.mat). For each Anderson
 % mouse, produces a 3x1 figure (D(->i), D(k->), BC):
 %
 %   * shaded band  -- Arnold mean +- SD per node
@@ -54,11 +54,11 @@ scheme = char(opts.Normalisation);
 resultsDir = resolveMouseResultsDir(opts.ResultsDir);
 
 %% Discover and load per-mouse result files
-pattern = sprintf('section45_*_%s_results.mat', scheme);
+pattern = sprintf('stabilityCentralities_*_%s_results.mat', scheme);
 files = dir(fullfile(resultsDir, pattern));
 if isempty(files)
     error('compareAndersonVsArnold:NoResults', ...
-        'No files matching %s found under %s. Run runAllMiceSection45 first.', ...
+        'No files matching %s found under %s. Run runAllMiceStabilityCentralities first.', ...
         pattern, resultsDir);
 end
 
@@ -118,7 +118,7 @@ if ~hasBC
     warning('compareAndersonVsArnold:NoBC', ...
         ['Betweenness centrality not available on any loaded result ' ...
          '(centralities.betweenness missing or all-NaN). BC panel will ' ...
-         'be skipped. Re-run runAllMiceSection45 with BCT on the path.']);
+         'be skipped. Re-run runAllMiceStabilityCentralities with BCT on the path.']);
 end
 
 D_susc_arnold_mean = mean(D_susc_arnold, 2, 'omitnan');

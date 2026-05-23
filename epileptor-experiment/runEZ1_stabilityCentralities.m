@@ -1,7 +1,6 @@
-%% runEZ1_section45.m
-% Reproduce Chapter 4, Section 4.5 ("Measuring Susceptible Nodes in
-% Epileptic Networks") of Jieru Liao's thesis. In particular, this
-% script reproduces Figure 4.2:
+%% runEZ1_stabilityCentralities.m
+% Stability centralities and per-node critical excitability for Patient 1.
+% Reproduces the analysis behind Liao (2026) thesis Fig. 4.2 (formerly runEZ1_section45):
 %
 %   For Patient 1's structural connectivity K, set a *fully healthy*
 %   Epileptor configuration (x0_i = -2.3 for every node i), compute the
@@ -14,43 +13,41 @@
 %   where Omega is the stationary covariance of the linear OU process
 %   with system matrix C (D_st = trace(Omega)/N, see README
 %   Section 1.6). Omega is obtained by covariancesGaussianNet for C and
-%   for C' respectively, matching the convention in JL_playing.m.
+%   for C' respectively.
 %
 %   In parallel, quantify each node's "epileptogenicity" ground truth:
 %   keep all other nodes at x0 = -2.3 and increase x0_i of the target
 %   node toward the epileptogenic regime until the network becomes
 %   unstable. The threshold value x0_i^c (critical excitability) at
-%   which the spectral radius rho(C) first reaches 1 is recorded. This
-%   is the stability criterion from Chapter 3 Section II.B / Section
-%   4.3 (|lambda_v| < 1, equivalently rho(C) < 1).
+%   which the spectral radius rho(C) first reaches 1 is recorded.
 %
-%   The three outputs are saved and used to reproduce Figure 4.2 as a
-%   two-panel scatter plot of D(-> i) and D(k ->) versus x0_i^c.
+%   The outputs are saved and plotted as a two-panel scatter of
+%   D(-> i) and D(k ->) versus x0_i^c.
 
 resultsDir = setupEpileptorPaths();
 
-%% Basic parameters (align with runEZ1.m / Section 4.4 of the thesis)
+%% Basic parameters (align with runEZ1.m)
 MaxK      = 100000000;
 tau0      = 6667;
 patient   = 'P1';
-x0_base   = -2.3;          % healthy baseline excitability for every node
-x0_upper  = -0.5;          % upper bound of the per-node critical search
-x0_step   = 0.005;         % coarse sweep step
-bisectTol = 1e-4;          % bisection tolerance on x0
+x0_base   = -2.3;
+x0_upper  = -0.5;
+x0_step   = 0.005;
+bisectTol = 1e-4;
 
 K = loadPatientWeights(patient);
-K = normal(K);             % 95th-percentile-truncated, [0,1] rescaled
+K = normal(K);
 [N, ~] = size(K);
 
 fprintf('Patient %s, N = %d nodes.\n', patient, N);
 
 %% Healthy-state fixed point and effective coupling matrix C
 opt = optimset('TolFun', 1e-14, 'TolX', 1e-14, 'Display', 'off');
-[z_fixed_healthy, C_healthy, rho_healthy] = healthyEpileptorCoupling(K, x0_base, tau0, 'runEZ1_section45');
+[z_fixed_healthy, C_healthy, rho_healthy] = healthyEpileptorCoupling(K, x0_base, tau0, 'runEZ1_stabilityCentralities');
 fprintf('Healthy rho(C) = %.6f\n', rho_healthy);
 
 %% Stability-based centralities from healthy C
-stab = computeStabilityCentralities(C_healthy, MaxK, 'runEZ1_section45');
+stab = computeStabilityCentralities(C_healthy, MaxK, 'runEZ1_stabilityCentralities');
 D_susceptibility = stab.D_susceptibility;
 D_influence      = stab.D_influence;
 Omega            = stab.Omega;
@@ -73,10 +70,10 @@ end
 sweepTime = toc;
 fprintf('Critical x0 sweep finished in %.1f s.\n', sweepTime);
 
-%% Reproduce Figure 4.2 (two-panel scatter)
-fig = plotSection45ScatterFigure(x0_crit, D_susceptibility, D_influence, ...
+%% Two-panel scatter (Fig. 4.2 style)
+fig = plotStabilityScatterFigure(x0_crit, D_susceptibility, D_influence, ...
     sprintf('Figure 4.2 - Patient %s', patient), x0_base, ...
-    sprintf('Figure 4.2 (%s, healthy)', patient));
+    sprintf('Stability centralities — Patient %s (healthy)', patient));
 
 %% Persist results
 results.patient          = patient;
@@ -91,8 +88,8 @@ results.z_fixed_healthy  = z_fixed_healthy;
 results.C_healthy        = C_healthy;
 results.Omega            = Omega;
 results.OmegaTranspose   = OmegaT;
-results.D_susceptibility = D_susceptibility;   % D(-> i)
-results.D_influence      = D_influence;        % D(k ->)
+results.D_susceptibility = D_susceptibility;
+results.D_influence      = D_influence;
 results.D_st_healthy     = D_st_healthy;
 results.x0_crit          = x0_crit;
 results.rho_at_crit      = rho_crit;
@@ -100,7 +97,7 @@ results.err_fwd          = err_fwd;
 results.err_trans        = err_trans;
 results.sweepTime        = sweepTime;
 
-baseName = sprintf('section45_%s_healthy', patient);
+baseName = sprintf('stabilityCentralities_%s_healthy', patient);
 save(fullfile(resultsDir, [baseName '_results.mat']), 'results');
 savefig(fig, fullfile(resultsDir, [baseName '_figure42.fig']));
 try

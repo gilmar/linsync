@@ -5,7 +5,7 @@ function out = computeStabilityCentralities(C_healthy, MaxK, warnId)
 %   C and C', then returns per-node stability centralities and D_st =
 %   trace(Omega)/N (see README Section 1.6).
 %
-%   Optional warnId prefixes warning identifiers (e.g. 'runEZ1_section45').
+%   Optional warnId prefixes warning identifiers (e.g. 'runEZ1_stabilityCentralities').
 
 if nargin < 3 || isempty(warnId)
     warnId = 'computeStabilityCentralities';

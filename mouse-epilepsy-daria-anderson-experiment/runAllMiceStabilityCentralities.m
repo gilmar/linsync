@@ -1,21 +1,22 @@
-function runAllMiceSection45(varargin)
-%RUNALLMICESECTION45  Apply the Liao §4.5 workflow to every Daria/Anderson
-% mouse coarse connectome under data/, then summarise which nodes "stand
-% out" (high stability susceptibility / influence centrality, equivalently
-% low critical excitability x^c_{0,i}) and on which mice.
+function runAllMiceStabilityCentralities(varargin)
+%RUNALLMICESTABILITYCENTRALITIES  Stability centralities for every mouse in data/.
+%
+% Applies runMouseStabilityCentralities to each Daria/Anderson coarse connectome,
+% then summarises which nodes stand out (high stability susceptibility / influence
+% centrality, equivalently low critical excitability x^c_{0,i}) across mice.
 %
 % Outputs (under results/):
-%   section45_<mouseId>_<scheme>_results.mat   per-mouse results struct
-%   section45_<mouseId>_<scheme>_figure.{fig,png}
-%   section45_summary_topnodes_<scheme>.csv    per-mouse top-K rankings
-%   section45_summary_overview_<scheme>.{fig,png}
+%   stabilityCentralities_<mouseId>_<scheme>_results.mat   per-mouse results struct
+%   stabilityCentralities_<mouseId>_<scheme>_figure.{fig,png}
+%   stabilityCentralities_summary_topnodes_<scheme>.csv    per-mouse top-K rankings
+%   stabilityCentralities_summary_overview_<scheme>.{fig,png}
 %
 % Name-value options:
 %   Normalisation : 'tvb' (default) | 'parkes' | 'column' | 'none'
 %   ParkesC       : 1.0     c parameter for the 'parkes' scheme
 %   ColScale      : 0.95    target column sum for the 'column' scheme
 %   TopK          : 10      number of top nodes to print/save per mouse
-%   x0Base, x0Upper, x0Step, BisectTol, MaxK, tau0  -- forwarded to runMouseSection45
+%   x0Base, x0Upper, x0Step, BisectTol, MaxK, tau0  -- forwarded to runMouseStabilityCentralities
 %   Plot, Verbose, SaveResults, ResultsDir
 
 p = inputParser;
@@ -43,7 +44,7 @@ resultsDir = resolveMouseResultsDir(opts.ResultsDir);
 
 mice = listAvailableMice();
 if isempty(mice)
-    error('runAllMiceSection45: no mouse CSVs found under data/.');
+    error('runAllMiceStabilityCentralities: no mouse CSVs found under data/.');
 end
 
 allResults = cell(numel(mice), 1);
@@ -52,7 +53,7 @@ for m = 1:numel(mice)
     mouseId = mice{m};
     fprintf('\n========== Running %s (%d/%d) ==========\n', mouseId, m, numel(mice));
     try
-        allResults{m} = runMouseSection45(mouseId, ...
+        allResults{m} = runMouseStabilityCentralities(mouseId, ...
             'Normalisation', normalisation, ...
             'ParkesC',       opts.ParkesC, ...
             'ColScale',      opts.ColScale, ...
@@ -68,7 +69,7 @@ for m = 1:numel(mice)
             'Plot',          opts.Plot, ...
             'Verbose',       opts.Verbose);
     catch ME
-        warning('runAllMiceSection45:MouseFailed', ...
+        warning('runAllMiceStabilityCentralities:MouseFailed', ...
             'Mouse %s failed: %s', mouseId, ME.message);
         allResults{m} = [];
     end
@@ -76,8 +77,6 @@ end
 fprintf('\nAll mice processed in %.1f s.\n', toc(totalTic));
 
 %% Cross-mouse summary -----------------------------------------------
-% Use the first non-empty result to build the canonical label list (all
-% mice share the same parcellation).
 canonicalLabels = [];
 for m = 1:numel(mice)
     if ~isempty(allResults{m})
@@ -86,11 +85,10 @@ for m = 1:numel(mice)
     end
 end
 if isempty(canonicalLabels)
-    error('runAllMiceSection45: no successful mouse runs.');
+    error('runAllMiceStabilityCentralities: no successful mouse runs.');
 end
 N = numel(canonicalLabels);
 
-% Pack per-mouse vectors into NxM matrices (NaN-padded).
 M = numel(mice);
 D_susc_all = NaN(N, M);
 D_infl_all = NaN(N, M);
@@ -103,9 +101,6 @@ for m = 1:M
     x0_crit_all(:, m) = r.x0_crit;
 end
 
-% Aggregate ranking (mean rank across mice, where a high-D / low-x0 node
-% is rank 1). Trivial / NaN entries are excluded from the ranking on
-% that mouse but counted with the worst-rank fallback for the average.
 [rank_susc, rank_infl, rank_x0] = deal(NaN(N, M));
 for m = 1:M
     if isempty(allResults{m}); continue; end
@@ -117,14 +112,13 @@ mean_rank_susc = mean(rank_susc, 2, 'omitnan');
 mean_rank_infl = mean(rank_infl, 2, 'omitnan');
 mean_rank_x0   = mean(rank_x0,   2, 'omitnan');
 
-%% Print per-mouse top-K and aggregate top-K
 fprintf('\n----- Per-mouse top-%d nodes (lowest x^c_{0,i}, i.e. most susceptible) -----\n', topK);
 for m = 1:M
     if isempty(allResults{m})
         fprintf('%s : (no result)\n', mice{m});
         continue;
     end
-    [~, ord] = sort(x0_crit_all(:, m), 'ascend');  % NaN goes to end
+    [~, ord] = sort(x0_crit_all(:, m), 'ascend');
     fprintf('\n%s top %d:\n', mice{m}, topK);
     for kk = 1:min(topK, N)
         i = ord(kk);
@@ -144,7 +138,6 @@ for kk = 1:min(topK, N)
 end
 
 %% Save summary CSV
-summaryRows = cell(0, 1);
 header = {'rank', 'region', 'mean_rank_x0', 'mean_rank_susc', 'mean_rank_infl'};
 for m = 1:M
     header{end+1} = sprintf('x0_crit__%s', mice{m}); %#ok<SAGROW>
@@ -177,18 +170,14 @@ for kk = 1:N
 end
 
 T = cell2table(summaryTable, 'VariableNames', header);
-csvFile = fullfile(resultsDir, sprintf('section45_summary_topnodes_%s.csv', normalisation));
+csvFile = fullfile(resultsDir, sprintf('stabilityCentralities_summary_topnodes_%s.csv', normalisation));
 writetable(T, csvFile);
 fprintf('\nWrote summary table %s\n', csvFile);
 
 %% Cross-mouse overview figure
 isParkes  = strcmpi(normalisation, 'parkes');
 isColumn  = ismember(lower(normalisation), {'column', 'col', 'colnorm'});
-isLinear  = isParkes || isColumn;
-% Parkes on symmetric K: D(k->)=D(->i); only show D(->i) (1 panel).
-% Column: D(k->) != D(->i), no x0; show both D panels (2 panels).
-% TVB / non-linear: x0^c + both centrality panels (3 panels).
-overviewFig = figure('Name', sprintf('§4.5 mouse overview (%s)', normalisation), ...
+overviewFig = figure('Name', sprintf('Stability centralities — mouse overview (%s)', normalisation), ...
                      'Position', [80 80 1600 700]);
 
 if isParkes
@@ -242,29 +231,28 @@ else
 end
 
 if isParkes
-    % Avoid sprintf here: \r in \rightarrow would be mis-parsed as carriage return.
-    sgtitle(['Cross-mouse §4.5 summary  --  normalisation = ' normalisation ...
+    sgtitle(['Cross-mouse stability centralities  --  normalisation = ' normalisation ...
              '  [D(k\rightarrow) \equiv D(\rightarrow i) for symmetric K]']);
 else
-    sgtitle(sprintf('Cross-mouse §4.5 summary  --  normalisation = %s', normalisation));
+    sgtitle(sprintf('Cross-mouse stability centralities  --  normalisation = %s', normalisation));
 end
 
-savefig(overviewFig, fullfile(resultsDir, sprintf('section45_summary_overview_%s.fig', normalisation)));
+savefig(overviewFig, fullfile(resultsDir, sprintf('stabilityCentralities_summary_overview_%s.fig', normalisation)));
 try
-    exportgraphics(overviewFig, fullfile(resultsDir, sprintf('section45_summary_overview_%s.png', normalisation)), 'Resolution', 200);
+    exportgraphics(overviewFig, fullfile(resultsDir, sprintf('stabilityCentralities_summary_overview_%s.png', normalisation)), 'Resolution', 200);
 catch
-    saveas(overviewFig, fullfile(resultsDir, sprintf('section45_summary_overview_%s.png', normalisation)));
+    saveas(overviewFig, fullfile(resultsDir, sprintf('stabilityCentralities_summary_overview_%s.png', normalisation)));
 end
 
 if isempty(opts.RunParameters)
-    runParameters = mouseExperimentRunParameters('buildFromSection45', opts, 'cohort');
+    runParameters = mouseExperimentRunParameters('buildFromStabilityCentralities', opts, 'cohort');
     runParameters.cohort.mice = mice;
     runParameters.cohort.nMice = numel(mice);
-    runParameters.section45.topK = topK;
+    runParameters.stabilityCentralities.topK = topK;
 else
     runParameters = opts.RunParameters;
 end
-save(fullfile(resultsDir, sprintf('section45_summary_%s.mat', normalisation)), ...
+save(fullfile(resultsDir, sprintf('stabilityCentralities_summary_%s.mat', normalisation)), ...
     'mice', 'canonicalLabels', 'D_susc_all', 'D_infl_all', 'x0_crit_all', ...
     'mean_rank_susc', 'mean_rank_infl', 'mean_rank_x0', 'normalisation', ...
     'runParameters');
@@ -283,5 +271,5 @@ finite = ~isnan(v);
 ranks = NaN(sum(finite), 1);
 ranks(ord) = 1:sum(finite);
 r(finite) = ranks;
-r(~finite) = N + 1;  % NaN -> worst rank (won't bias mean towards top)
+r(~finite) = N + 1;
 end

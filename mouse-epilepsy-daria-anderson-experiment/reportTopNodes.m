@@ -1,7 +1,7 @@
 function reportTopNodes(varargin)
 %REPORTTOPNODES  Print top-N structurally susceptible (or influential, or
-% epileptogenic) regions from a section45 summary CSV produced by
-% runAllMiceSection45.
+% epileptogenic) regions from a stabilityCentralities summary CSV produced by
+% runAllMiceStabilityCentralities.
 %
 % The CSV is sorted by the chosen centrality's mean rank across mice
 % (ascending = best / most notable first).  Under the 'parkes' scheme,
@@ -39,9 +39,9 @@ if (isParkes || isColumn) && strcmp(sortStr, 'x0')
 end
 
 resultsDir = resolveMouseResultsDir(opts.ResultsDir);
-csvFile = fullfile(resultsDir, sprintf('section45_summary_topnodes_%s.csv', normStr));
+csvFile = fullfile(resultsDir, sprintf('stabilityCentralities_summary_topnodes_%s.csv', normStr));
 if ~exist(csvFile, 'file')
-    error('reportTopNodes: file not found:\n  %s\nRun runAllMiceSection45 first.', csvFile);
+    error('reportTopNodes: file not found:\n  %s\nRun runAllMiceStabilityCentralities first.', csvFile);
 end
 
 T = readtable(csvFile, 'TextType', 'string');

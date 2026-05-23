@@ -6,7 +6,7 @@ The [Brain Connectivity Toolbox](https://sites.google.com/site/bctnet/) (BCT) is
 
 | Script | BCT required? |
 |--------|----------------|
-| `runMouseSection45` | Optional — betweenness and closeness are `NaN` without BCT; stability centralities still run |
+| `runMouseStabilityCentralities` | Optional — betweenness and closeness are `NaN` without BCT; stability centralities still run |
 | `computeNetworkCentralities` | Yes, for `betweenness` and `closeness_*` fields |
 | `compareCentralityMeasures` | Only if results were computed with BCT available |
 | `compareAndersonVsArnold` | Only for the betweenness panel (third subplot) |
@@ -36,7 +36,7 @@ The [Brain Connectivity Toolbox](https://sites.google.com/site/bctnet/) (BCT) is
    assert(exist('betweenness_wei', 'file') == 2, 'BCT not on path');
    ```
 
-If BCT is missing, `setupMousePaths` issues a **warning** (not an error). Re-run `runMouseSection45` after installing BCT if you need full classical centrality fields in the saved results.
+If BCT is missing, `setupMousePaths` issues a **warning** (not an error). Re-run `runMouseStabilityCentralities` after installing BCT if you need full classical centrality fields in the saved results.
 
 ## Citation
 

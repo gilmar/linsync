@@ -56,7 +56,7 @@ cfg.alpha      = str2double(getProp(raw, {'alpha'}, '0.05'));
 cfg.zThreshold = str2double(getProp(raw, {'z_threshold'}, '2'));
 
 cfg.pipelineRunHeatmap          = parseBool(getProp(raw, {'pipeline_runHeatmap'}, 'false'));
-cfg.pipelineRunSection45        = parseBool(getProp(raw, {'pipeline_runSection45'}, 'true'));
+cfg.pipelineRunStabilityCentralities = parseBool(getProp(raw, {'pipeline_runStabilityCentralities'}, 'true'));
 cfg.pipelineRunCentralityCorr   = parseBool(getProp(raw, {'pipeline_runCentralityCorr'}, 'true'));
 cfg.pipelineRunAndersonVsArnold = parseBool(getProp(raw, {'pipeline_runAndersonVsArnold'}, 'true'));
 cfg.pipelineRunDstCohort        = parseBool(getProp(raw, {'pipeline_runDstCohort'}, 'true'));

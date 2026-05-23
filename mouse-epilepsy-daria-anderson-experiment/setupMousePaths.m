@@ -1,7 +1,7 @@
 function resultsDir = setupMousePaths(varargin)
 %SETUPMOUSEPATHS  Add linsync toolkit, BCT, and this experiment folder to the MATLAB path.
 %
-%   Shared Epileptor dynamics and §4.5 helpers (oneDepileptor, CouplingMatrix,
+%   Shared Epileptor dynamics and stability-centrality helpers (oneDepileptor, CouplingMatrix,
 %   normal, findCriticalX0, computeStabilityCentralities, etc.) live in the
 %   linsync root and are added via toolkitRoot below.
 %

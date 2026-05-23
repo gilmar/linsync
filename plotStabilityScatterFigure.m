@@ -1,8 +1,8 @@
-function fig = plotSection45ScatterFigure(x0_crit, D_susceptibility, D_influence, subjectLabel, x0_base, figName)
-%PLOTSECTION45SCATTERFIGURE  Two-panel §4.5 scatter (Figure 4.2 style).
+function fig = plotStabilityScatterFigure(x0_crit, D_susceptibility, D_influence, subjectLabel, x0_base, figName)
+%PLOTSTABILITYSCATTERFIGURE  Two-panel scatter of stability centralities vs x0^c.
 
 if nargin < 6 || isempty(figName)
-    figName = sprintf('§4.5 (%s, healthy)', subjectLabel);
+    figName = sprintf('Stability centralities (%s, healthy)', subjectLabel);
 end
 
 fig = figure('Name', figName, 'Position', [100 100 1200 480]);
