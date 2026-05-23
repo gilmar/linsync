@@ -251,7 +251,7 @@ Primary experimental scripts to run:
 * `computeSyncResults.m` - main script to sample $\left\langle \sigma^2 \right\rangle$ and/or $D_{\mathrm{st}}$ for many networks
    with given parameters (controlled by `parameters.computationMode`: `'sync'` or `'stability'`); saves results to .mat files for later processing.
 
-Separate **epileptor + patient connectivity** experiments (1D epileptor fixed points, coupling Jacobian **C**, \(D_{\mathrm{st}}\) via `covariancesGaussianNet`) live in [`epileptor-experiment`](epileptor-experiment/README.md); see that folder’s README for scripts and `data/` layout. **Optimization Toolbox** (for `fsolve`) is a prerequisite for those scripts.
+Separate **epileptor + patient connectivity** experiments (1D epileptor fixed points, coupling Jacobian **C**, \(D_{\mathrm{st}}\) via `covariancesGaussianNet`) live in [`epileptor-experiment`](epileptor-experiment/README.md); see that folder’s README for scripts and `data/` layout. Shared dynamics and §4.5 helpers (`oneDepileptor`, `CouplingMatrix`, `normal`, `findCriticalX0`, `computeStabilityCentralities`, `applyConnectomeNormalisation`, etc.) live in the **linsync root** and are also used by [`mouse-epilepsy-daria-anderson-experiment`](mouse-epilepsy-daria-anderson-experiment/README.md). **Optimization Toolbox** (for `fsolve`) is a prerequisite for those scripts.
 
 Plotting scripts once results are ready:
 * `plotSyncResults.m` - plot $\left\langle \sigma^2 \right\rangle$ versus $p$ or $c$ (like Figure 4).

@@ -1,26 +1,26 @@
 function resultsDir = setupMousePaths()
-%SETUPMOUSEPATHS  Add linsync toolkit, the epileptor experiment helpers,
-%and this experiment folder to the MATLAB path.
+%SETUPMOUSEPATHS  Add linsync toolkit, BCT, and this experiment folder to the MATLAB path.
 %
-%   The mouse-epilepsy experiment reuses the 1-D Epileptor dynamics from
-%   epileptor-experiment/ (oneDepileptor, CouplingMatrix, normal,
-%   covariancesGaussianNet from linsync/), so we add both folders to the
-%   path here.
+%   Shared Epileptor dynamics and §4.5 helpers (oneDepileptor, CouplingMatrix,
+%   normal, findCriticalX0, computeStabilityCentralities, etc.) live in the
+%   linsync root and are added via toolkitRoot below.
 %
 %   Returns resultsDir -- full path to the results/ subfolder
 %   (created if missing).
 
 experimentRoot = fileparts(mfilename('fullpath'));
 toolkitRoot    = fileparts(experimentRoot);
-epileptorRoot  = fullfile(toolkitRoot, 'epileptor-experiment');
+bctRoot        = fullfile(toolkitRoot, '2019_03_03_BCT');
 
 addpath(toolkitRoot);
-if exist(epileptorRoot, 'dir')
-    addpath(epileptorRoot);
+if exist(bctRoot, 'dir')
+    addpath(bctRoot);
 else
-    warning('setupMousePaths:NoEpileptorExperiment', ...
-        'epileptor-experiment folder not found at %s. oneDepileptor / CouplingMatrix / normal will not resolve.', ...
-        epileptorRoot);
+    warning('setupMousePaths:NoBCT', ...
+        ['Brain Connectivity Toolbox not found at %s. betweenness_wei, ' ...
+         'distance_wei, and other BCT functions will be unavailable. ' ...
+         'Download BCT from https://sites.google.com/site/bctnet/ and ' ...
+         'place it at that path.'], bctRoot);
 end
 addpath(experimentRoot);
 

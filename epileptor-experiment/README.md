@@ -1,9 +1,9 @@
 # Epileptor network experiment (1D epileptor + structural connectivity)
 
-This folder is self-contained except for the parent **linsync** toolkit (covariance / \(D_{\mathrm{st}}\) machinery). Run scripts from MATLAB with the current folder set anywhere; each driver calls `setupEpileptorPaths()` to add:
+This folder is self-contained except for the parent **linsync** toolkit. Run scripts from MATLAB with the current folder set anywhere; each driver calls `setupEpileptorPaths()` to add:
 
-- the **linsync** root (parent of this directory), and  
-- this **epileptor-experiment** directory.
+- the **linsync** root (parent of this directory), which provides covariance / \(D_{\mathrm{st}}\) machinery plus shared Epileptor helpers (`oneDepileptor`, `CouplingMatrix`, `normal`, `findCriticalX0`, `computeStabilityCentralities`, etc.), and  
+- this **epileptor-experiment** directory (data loaders and drivers).
 
 ## Prerequisites
 
@@ -17,7 +17,6 @@ This folder is self-contained except for the parent **linsync** toolkit (covaria
 | `runEZ1_section45.m` | Reproduces **Chapter 4 §4.5** (Fig. 4.2) of Liao (2026): computes per-node stability susceptibility \(D(\to i)\) and influence \(D(k \to)\) from the healthy P1 network, sweeps each node's \(x_0\) to find critical \(x^{c}_{0,i}\) (where \(\rho(C) \ge 1\)), and renders the two-panel scatter plot |
 | `JL_playing.m` | Single baseline + virtual resections, \(D_{\mathrm{st}}\) and per-node Ω diagonals |
 | `main1K12_JLadjusted.m` | Resection scenarios and critical \(x_0\) for EZ (fsolve failure boundary) |
-| `CouplingMatrix.m`, `oneDepileptor.m`, `normal.m` | Dynamics and normalization |
 | `loadPatientWeights.m`, `setupEpileptorPaths.m` | Data loading and path setup |
 | `results/` | `.mat` outputs from the drivers (folder created by `setupEpileptorPaths`) |
 | `data/connectivity_<patient>/weights.txt` | Structural weights (sample: `P1`) |

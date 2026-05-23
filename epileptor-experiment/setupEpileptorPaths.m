@@ -2,8 +2,9 @@ function resultsDir = setupEpileptorPaths()
 %SETUPEPILEPTORPATHS  Add linsync toolkit root and this experiment folder to the MATLAB path.
 %
 %   Call once at the start of each experiment script so covariancesGaussianNet,
-%   con2cov, etc. resolve from the parent linsync directory, and local
-%   CouplingMatrix, loadPatientWeights, etc. resolve from epileptor-experiment/.
+%   con2cov, oneDepileptor, CouplingMatrix, normal, and other shared helpers
+%   resolve from the parent linsync directory, and loadPatientWeights etc.
+%   resolve from epileptor-experiment/.
 %
 %   Returns resultsDir — full path to the results/ subfolder (created if missing).
 

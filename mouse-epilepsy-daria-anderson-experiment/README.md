@@ -6,7 +6,7 @@ Apply the §4.5 workflow from Liao's thesis (originally implemented for human da
 
 | Path | Role |
 |------|------|
-| `setupMousePaths.m` | Adds linsync root, `epileptor-experiment/`, and this folder to the MATLAB path |
+| `setupMousePaths.m` | Adds linsync root (shared Epileptor / §4.5 helpers), BCT, and this folder to the MATLAB path |
 | `loadMouseConnectome.m` | Loads `data/<mouseId>/fine_family_labelled_coarse.csv` and returns `K`, region labels, and a `info.isTrivial` flag for empty rows |
 | `compareMouseHeatmap.m` | Sanity check: render `imagesc(K)` for every mouse so you can compare visually with `data/<mouseId>/coarse_connectome_<mouseid>.png` |
 | `runMouseSection45.m` | Per-mouse driver -- mirrors `runEZ1_section45.m`. Healthy 1-D Epileptor on K, computes \(D(\to i)\), \(D(k \to)\), per-node critical excitability \(x^{c}_{0,i}\) |
@@ -30,12 +30,12 @@ Several "rows" are placeholders that have no real connectivity (`L-BACKGROUND`, 
 ## Workflow per mouse
 
 1. Load the 66×66 raw weighted matrix `K_raw`.
-2. Normalise it. Schemes available in `runMouseSection45.m::applyMouseNormalisation`:
-    - `tvb` (default) — `normal()` from `epileptor-experiment/`: zero diagonal, truncate at the 95th percentile of off-diagonal entries, rescale to `[0,1]`.
+2. Normalise it. Schemes available via `applyConnectomeNormalisation` in the linsync root:
+    - `tvb` (default) — `normal()`: zero diagonal, truncate at the 95th percentile of off-diagonal entries, rescale to `[0,1]`.
     - `none` — pass `K_raw` through unchanged.
     - `parkes` — `nctpy.utils.matrix_normalization` from Parkes et al. (Nat Protoc 2024, [doi:10.1038/s41596-024-01023-w](https://doi.org/10.1038/s41596-024-01023-w)): `A_norm = A / (|λ(A)|_max + c)`, with `c = ParkesC` (default 1). The continuous-time `-I` subtraction described in the paper is applied implicitly inside linsync's `con2cov` (which solves `dX = -X(I − C) dt + dW`), so we deliberately stop at the rescaling step. With this scheme the script **skips the Epileptor fixed-point solve and the per-node `x_0^c` sweep**: `A_norm` is fed straight in as the coupling matrix `C` and only `D(→i)` and `D(k→)` are computed (Liao & Lizier-style stability centralities on the Parkes-normalised connectome).
 3. Solve the healthy-state 1-D Epileptor fixed point with `x0_i = -2.3` for all i.
-4. Form the effective coupling matrix `C` (`CouplingMatrix.m`).
+4. Form the effective coupling matrix `C` (`CouplingMatrix.m` in linsync root).
 5. Compute \(\Omega\) via `covariancesGaussianNet(C, false, MaxK, false, 1)` and read \(D(\to i) = \Omega_{ii}\). Repeat with \(C^{\top}\) for \(D(k \to)\).
 6. For each non-trivial node, sweep \(x_{0,i}\) upward from −2.3 (others held at −2.3) until \(\rho(C) \geq 1\); coarse step 0.01 + bisection to 1e-4 in \(x_0\).
 7. Render the §4.5 two-panel scatter and persist `_results.mat` / `_figure.{fig,png}`.

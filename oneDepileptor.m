@@ -1,4 +1,4 @@
-function dz = oneDepileptor(z, x0, K,tau0)
+function dz = oneDepileptor(z, x0, K, tau0)
 
     N = length(z); % number of nodes
     dz = zeros(N, 1); % initialize dz vector
@@ -16,6 +16,6 @@ function dz = oneDepileptor(z, x0, K,tau0)
             coupling_term = coupling_term + K(i, j) * ((1/4) * (-16/3 - sqrt(8 * z(j) - 629.6 / 27)) - F);
         end
 
-        dz(i) = (1/tau0)* (G + x0_i - coupling_term); 
+        dz(i) = (1/tau0) * (G + x0_i - coupling_term);
     end
 end
