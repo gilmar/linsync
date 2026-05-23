@@ -11,22 +11,35 @@ function runAllMiceSection45(varargin)
 %   section45_summary_overview_<scheme>.{fig,png}
 %
 % Name-value options:
-%   Normalisation : 'parkes' (default) | 'tvb' | 'column' | 'none'
+%   Normalisation : 'tvb' (default) | 'parkes' | 'column' | 'none'
 %   ParkesC       : 1.0     c parameter for the 'parkes' scheme
 %   ColScale      : 0.95    target column sum for the 'column' scheme
 %   TopK          : 10      number of top nodes to print/save per mouse
+%   x0Base, x0Upper, x0Step, BisectTol, MaxK, tau0  -- forwarded to runMouseSection45
+%   Plot, Verbose, SaveResults, ResultsDir
 
 p = inputParser;
 addParameter(p, 'Normalisation', 'tvb', @(s) ischar(s) || isstring(s));
 addParameter(p, 'ParkesC',       1.0,      @isscalar);
 addParameter(p, 'ColScale',      0.95,     @isscalar);
 addParameter(p, 'TopK',          10,       @isscalar);
+addParameter(p, 'x0Base',        -2.3,     @isscalar);
+addParameter(p, 'x0Upper',       -1.0,     @isscalar);
+addParameter(p, 'x0Step',         0.01,    @isscalar);
+addParameter(p, 'BisectTol',      1e-4,    @isscalar);
+addParameter(p, 'MaxK',           1e8,     @isscalar);
+addParameter(p, 'tau0',           6667,    @isscalar);
+addParameter(p, 'Plot',           true,    @islogical);
+addParameter(p, 'Verbose',        true,    @islogical);
+addParameter(p, 'SaveResults',    true,    @islogical);
+addParameter(p, 'ResultsDir',     '',      @(s) ischar(s) || isstring(s));
+addParameter(p, 'RunParameters',  [],      @(x) isempty(x) || isstruct(x));
 parse(p, varargin{:});
 opts          = p.Results;
 normalisation = char(opts.Normalisation);
 topK          = opts.TopK;
 
-resultsDir = setupMousePaths();
+resultsDir = resolveMouseResultsDir(opts.ResultsDir);
 
 mice = listAvailableMice();
 if isempty(mice)
@@ -43,9 +56,17 @@ for m = 1:numel(mice)
             'Normalisation', normalisation, ...
             'ParkesC',       opts.ParkesC, ...
             'ColScale',      opts.ColScale, ...
-            'SaveResults',   true, ...
-            'Plot',          true, ...
-            'Verbose',       true);
+            'x0Base',        opts.x0Base, ...
+            'x0Upper',       opts.x0Upper, ...
+            'x0Step',        opts.x0Step, ...
+            'BisectTol',     opts.BisectTol, ...
+            'MaxK',          opts.MaxK, ...
+            'tau0',          opts.tau0, ...
+            'ResultsDir',    resultsDir, ...
+            'RunParameters', opts.RunParameters, ...
+            'SaveResults',   opts.SaveResults, ...
+            'Plot',          opts.Plot, ...
+            'Verbose',       opts.Verbose);
     catch ME
         warning('runAllMiceSection45:MouseFailed', ...
             'Mouse %s failed: %s', mouseId, ME.message);
@@ -235,9 +256,18 @@ catch
     saveas(overviewFig, fullfile(resultsDir, sprintf('section45_summary_overview_%s.png', normalisation)));
 end
 
+if isempty(opts.RunParameters)
+    runParameters = mouseExperimentRunParameters('buildFromSection45', opts, 'cohort');
+    runParameters.cohort.mice = mice;
+    runParameters.cohort.nMice = numel(mice);
+    runParameters.section45.topK = topK;
+else
+    runParameters = opts.RunParameters;
+end
 save(fullfile(resultsDir, sprintf('section45_summary_%s.mat', normalisation)), ...
     'mice', 'canonicalLabels', 'D_susc_all', 'D_infl_all', 'x0_crit_all', ...
-    'mean_rank_susc', 'mean_rank_infl', 'mean_rank_x0', 'normalisation');
+    'mean_rank_susc', 'mean_rank_infl', 'mean_rank_x0', 'normalisation', ...
+    'runParameters');
 
 fprintf('\nDone.\n');
 end

@@ -27,11 +27,13 @@ setupMousePaths();
 p = inputParser;
 addParameter(p, 'Normalisation', 'column', @(s) ischar(s) || isstring(s));
 addParameter(p, 'SaveResults',   true,     @islogical);
+addParameter(p, 'ResultsDir',    '',       @(s) ischar(s) || isstring(s));
+addParameter(p, 'RunParameters', [],       @(x) isempty(x) || isstruct(x));
 parse(p, varargin{:});
 opts   = p.Results;
 scheme = char(opts.Normalisation);
 
-resultsDir = setupMousePaths();
+resultsDir = resolveMouseResultsDir(opts.ResultsDir);
 
 pattern = sprintf('section45_*_%s_results.mat', scheme);
 files = dir(fullfile(resultsDir, pattern));
@@ -128,17 +130,12 @@ title(ax, sprintf(['Network-level D_{st} per mouse  --  scheme = %s' ...
 grid(ax, 'on'); box(ax, 'on');
 legend(ax, 'Location', 'best');
 
-if opts.SaveResults
-    csvPath = fullfile(resultsDir, sprintf('D_st_cohort_%s.csv', scheme));
-    writetable(T, csvPath);
-    figBase = fullfile(resultsDir, sprintf('D_st_cohort_%s', scheme));
-    savefig(fig, [figBase '.fig']);
-    try
-        exportgraphics(fig, [figBase '.png'], 'Resolution', 200);
-    catch
-        saveas(fig, [figBase '.png']);
-    end
-    fprintf('Wrote %s, %s.{fig,png}\n', csvPath, figBase);
+if isempty(opts.RunParameters)
+    runParameters = mouseExperimentRunParameters('buildFromCompareDst', ...
+        opts, scheme, resultsDir);
+else
+    runParameters = mouseExperimentRunParameters('merge', opts.RunParameters, ...
+        mouseExperimentRunParameters('buildFromCompareDst', opts, scheme, resultsDir));
 end
 
 summary = struct( ...
@@ -150,5 +147,21 @@ summary = struct( ...
     'isArnold',   isArnold, ...
     'mean_Anderson', mAnd, 'std_Anderson', sAnd, ...
     'mean_Arnold',   mArn, 'std_Arnold',   sArn, ...
-    'tStat',      tStat, 'pValue', pVal);
+    'tStat',      tStat, 'pValue', pVal, ...
+    'runParameters', runParameters);
+
+if opts.SaveResults
+    csvPath = fullfile(resultsDir, sprintf('D_st_cohort_%s.csv', scheme));
+    writetable(T, csvPath);
+    figBase = fullfile(resultsDir, sprintf('D_st_cohort_%s', scheme));
+    savefig(fig, [figBase '.fig']);
+    try
+        exportgraphics(fig, [figBase '.png'], 'Resolution', 200);
+    catch
+        saveas(fig, [figBase '.png']);
+    end
+    save(fullfile(resultsDir, sprintf('D_st_cohort_%s.mat', scheme)), ...
+        'summary', 'runParameters');
+    fprintf('Wrote %s, %s.{fig,png}, D_st_cohort_%s.mat\n', csvPath, figBase, scheme);
+end
 end

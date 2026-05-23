@@ -45,11 +45,13 @@ addParameter(p, 'Normalisation', 'column', @(s) ischar(s) || isstring(s));
 addParameter(p, 'ZThreshold',    2.0,  @isscalar);
 addParameter(p, 'Alpha',         0.05, @(x) isscalar(x) && x > 0 && x < 1);
 addParameter(p, 'SaveResults',   true, @islogical);
+addParameter(p, 'ResultsDir',    '',   @(s) ischar(s) || isstring(s));
+addParameter(p, 'RunParameters', [],   @(x) isempty(x) || isstruct(x));
 parse(p, varargin{:});
 opts = p.Results;
 scheme = char(opts.Normalisation);
 
-resultsDir = setupMousePaths();
+resultsDir = resolveMouseResultsDir(opts.ResultsDir);
 
 %% Discover and load per-mouse result files
 pattern = sprintf('section45_*_%s_results.mat', scheme);
@@ -285,6 +287,14 @@ summary.trivialAcrossArnold = trivialAcrossArnold;
 summary.deviations          = deviations;
 summary.zThreshold          = opts.ZThreshold;
 summary.alpha               = opts.Alpha;
+
+if isempty(opts.RunParameters)
+    summary.runParameters = mouseExperimentRunParameters('buildFromCompareAnderson', ...
+        opts, scheme, resultsDir);
+else
+    summary.runParameters = mouseExperimentRunParameters('merge', opts.RunParameters, ...
+        mouseExperimentRunParameters('buildFromCompareAnderson', opts, scheme, resultsDir));
+end
 
 if opts.SaveResults
     save(fullfile(resultsDir, ...

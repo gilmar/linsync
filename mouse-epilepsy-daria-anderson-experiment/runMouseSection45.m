@@ -36,6 +36,7 @@ function results = runMouseSection45(mouseId, varargin)
 %     SaveResults   : true   write results .mat / figures to results/
 %     Plot          : true   produce the figure
 %     Verbose       : true   per-node fprintf
+%     ResultsDir    : ''     output folder (default: results/ via setupMousePaths)
 
 setupMousePaths();
 
@@ -53,11 +54,13 @@ addParameter(p, 'tau0',  6667,   @isscalar);
 addParameter(p, 'SaveResults', true, @islogical);
 addParameter(p, 'Plot',        true, @islogical);
 addParameter(p, 'Verbose',     true, @islogical);
+addParameter(p, 'ResultsDir',  '', @(s) ischar(s) || isstring(s));
+addParameter(p, 'RunParameters', [], @(x) isempty(x) || isstruct(x));
 parse(p, mouseId, varargin{:});
 opts = p.Results;
 mouseId = char(opts.mouseId);
 
-resultsDir = setupMousePaths();
+resultsDir = resolveMouseResultsDir(opts.ResultsDir);
 
 %% Load + normalise
 [K_raw, labels, info] = loadMouseConnectome(mouseId);
@@ -239,6 +242,13 @@ results.rho_at_crit      = rho_crit;
 results.err_fwd          = err_fwd;
 results.err_trans        = err_trans;
 results.sweepTime        = sweepTime;
+
+if isempty(opts.RunParameters)
+    results.runParameters = mouseExperimentRunParameters('buildFromSection45', opts, mouseId);
+else
+    results.runParameters = mouseExperimentRunParameters('merge', opts.RunParameters, ...
+        struct('section45', struct('mouseId', mouseId)));
+end
 
 %% Persist
 if opts.SaveResults

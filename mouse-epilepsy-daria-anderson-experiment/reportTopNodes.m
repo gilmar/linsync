@@ -15,28 +15,30 @@ function reportTopNodes(varargin)
 %
 % Parameters:
 %   'N'              – number of top nodes to print  (default 10)
-%   'Normalisation'  – 'parkes' or 'tvb'             (default 'parkes')
+%   'Normalisation'  – 'parkes', 'tvb', or 'column'  (default 'parkes')
 %   'SortBy'         – 'susc' | 'infl' | 'x0'        (default 'susc')
+%   'ResultsDir'     – output folder (default results/)
 
 p = inputParser();
 p.addParameter('N',             10,       @(x) isnumeric(x) && x > 0 && isscalar(x));
 p.addParameter('Normalisation', 'parkes', @(x) ischar(x) || isstring(x));
 p.addParameter('SortBy',        'susc',   @(x) ischar(x) || isstring(x));
+p.addParameter('ResultsDir',    '',       @(x) ischar(x) || isstring(x));
 p.parse(varargin{:});
 opts = p.Results;
 
 normStr  = char(opts.Normalisation);
 sortStr  = lower(char(opts.SortBy));
 isParkes = strcmpi(normStr, 'parkes');
+isColumn = ismember(lower(normStr), {'column', 'col', 'colnorm'});
 
-if isParkes && strcmp(sortStr, 'x0')
-    warning('reportTopNodes:ParkesX0', ...
-        'x0^c is not computed under Parkes normalisation (all NaN). Falling back to ''susc''.');
+if (isParkes || isColumn) && strcmp(sortStr, 'x0')
+    warning('reportTopNodes:LinearX0', ...
+        'x0^c is not computed under %s normalisation. Falling back to ''susc''.', normStr);
     sortStr = 'susc';
 end
 
-experimentRoot = fileparts(mfilename('fullpath'));
-resultsDir = fullfile(experimentRoot, 'results');
+resultsDir = resolveMouseResultsDir(opts.ResultsDir);
 csvFile = fullfile(resultsDir, sprintf('section45_summary_topnodes_%s.csv', normStr));
 if ~exist(csvFile, 'file')
     error('reportTopNodes: file not found:\n  %s\nRun runAllMiceSection45 first.', csvFile);

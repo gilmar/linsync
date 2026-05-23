@@ -49,6 +49,8 @@ addParameter(p, 'CorrType',      'Spearman', @(s) ischar(s) || isstring(s));
 addParameter(p, 'PerMouse',      true,       @islogical);
 addParameter(p, 'SaveResults',   true,       @islogical);
 addParameter(p, 'Reorder',       'cluster',  @(s) ischar(s) || isstring(s));
+addParameter(p, 'ResultsDir',    '',         @(s) ischar(s) || isstring(s));
+addParameter(p, 'RunParameters', [],         @(x) isempty(x) || isstruct(x));
 parse(p, varargin{:});
 opts     = p.Results;
 scheme   = char(opts.Normalisation);
@@ -59,7 +61,7 @@ if ~ismember(reorder, {'cluster', 'fixed'})
         'Reorder must be ''cluster'' or ''fixed'' (got ''%s'').', reorder);
 end
 
-resultsDir = setupMousePaths();
+resultsDir = resolveMouseResultsDir(opts.ResultsDir);
 
 %% Discover and load per-mouse result files
 pattern = sprintf('section45_*_%s_results.mat', scheme);
@@ -220,6 +222,14 @@ summary.bar.sdInfl    = sdInfl;
 summary.reorder       = reorder;
 summary.clusterOrder  = order;
 summary.orderedLabels = {displayOrdered{:}}.';  %#ok<CCAT1>
+
+if isempty(opts.RunParameters)
+    summary.runParameters = mouseExperimentRunParameters('buildFromCompareCentrality', ...
+        opts, scheme, resultsDir);
+else
+    summary.runParameters = mouseExperimentRunParameters('merge', opts.RunParameters, ...
+        mouseExperimentRunParameters('buildFromCompareCentrality', opts, scheme, resultsDir));
+end
 
 if opts.SaveResults
     save(fullfile(resultsDir, sprintf('centrality_corr_%s.mat', scheme)), ...

@@ -4,21 +4,233 @@ Apply the §4.5 workflow from Liao's thesis (originally implemented for human da
 
 ## Prerequisites
 
-- **MATLAB Optimization Toolbox** — `fsolve` for Epileptor fixed points (`tvb` / default schemes).
+- **MATLAB Optimization Toolbox** — `fsolve` for Epileptor fixed points (`tvb` / `none` schemes).
 - **Brain Connectivity Toolbox (BCT)** — optional for stability-only runs; **required** for betweenness/closeness in `computeNetworkCentralities` and for the betweenness panel in `compareAndersonVsArnold`. BCT is **not** included in git; install locally under `../2019_03_03_BCT/` — see [docs/BCT.md](../docs/BCT.md).
 
-## Layout
+## Cohort
+
+Five mice have the coarse CSV required by the pipeline:
+
+`Anderson_1`, `Anderson_2`, `Arnold_3`, `Arnold_4`, `Arnold_5`
+
+`Arnold_2` has other data files but **no** `fine_family_labelled_coarse.csv` and is skipped automatically.
+
+---
+
+## Managing experiment runs (recommended workflow)
+
+Use a **`.properties` config file** per experiment. Each experiment has:
+
+- **One normalisation scheme** (`column`, `parkes`, or `tvb`)
+- **One parameter set** (Epileptor bounds, Parkes constant, comparison settings, etc.)
+- **Its own results folder** under `results/<experiment.name>/`, so runs never overwrite each other
+
+### Quick start
+
+```matlab
+cd mouse-epilepsy-daria-anderson-experiment
+setupMousePaths();
+
+% Run the three shipped baseline experiments (column, parkes, tvb)
+% Warning: tvb is slow (~10 min/mouse × 5 mice)
+runAllMouseExperiments
+
+% Or a single experiment:
+runMouseExperiment('configs/initial_column.properties')
+
+% Create a new timestamped config, edit it, then run:
+newMouseExperiment('parkes')   % -> configs/yyyy-MM-dd_HH-mm-ss_parkes.properties
+runMouseExperiment('configs/yyyy-MM-dd_HH-mm-ss_parkes.properties')
+```
+
+### Shipped configs
+
+| Config file | `experiment.name` | Normalisation |
+|-------------|-------------------|---------------|
+| `configs/initial_column.properties` | `initial_column` | `column` |
+| `configs/initial_parkes.properties` | `initial_parkes` | `parkes` |
+| `configs/initial_tvb.properties` | `initial_tvb` | `tvb` |
+
+Copy `configs/experiment.template.properties` or any `initial_*.properties` file to start a new study with different `parkes.c`, `col.scale`, Epileptor search bounds, or pipeline toggles.
+
+### What `runMouseExperiment` runs
+
+When pipeline flags are `true` (defaults), the orchestrator runs these steps **in order** for the scheme in the config:
+
+| Step | Script | Output (examples) |
+|------|--------|-------------------|
+| Optional QC | `compareMouseHeatmap` | `mouse_heatmaps_overview_*.{fig,png}` |
+| Per-mouse §4.5 | `runAllMiceSection45` | `section45_<mouse>_<scheme>_results.mat`, figures, summary CSV/overview |
+| Centrality correlations | `compareCentralityMeasures` | `centrality_corr_*` |
+| Anderson vs Arnold | `compareAndersonVsArnold` | `compare_anderson_vs_arnold_*` |
+| Network \(D_{\mathrm{st}}\) | `compareDstAcrossCohort` | `D_st_cohort_*` |
+| Console reports | `reportTopNodes`, `reportAndersonOutliers` | `reports.log` |
+
+After §4.5, the orchestrator checks that every available mouse produced a `section45_*_<scheme>_results.mat` file. Step success and timing are recorded in `run_manifest.mat`.
+
+Disable steps with `pipeline.run*` keys in the properties file (e.g. `pipeline.runHeatmap=true` for connectome QC only).
+
+---
+
+## Results folder layout
+
+Each experiment writes to **`results/<experiment.name>/`** (not the legacy flat `results/` root, unless you call scripts manually without an experiment name).
+
+Example after `runMouseExperiment('configs/initial_column.properties')`:
+
+```
+results/initial_column/
+  experiment.properties          # exact config copied at run start
+  experiment_parameters.mat      # full parameter snapshot (MATLAB)
+  experiment_parameters.json     # same snapshot (human-readable)
+  run_manifest.mat               # pipeline steps + runParams + cfg
+  reports.log                    # reportTopNodes / reportAndersonOutliers output
+
+  section45_Anderson_1_column_results.mat
+  section45_Anderson_1_column_figure.{fig,png}
+  ...                            # one result set per mouse
+  section45_summary_topnodes_column.csv
+  section45_summary_overview_column.{fig,png}
+  section45_summary_column.mat
+
+  centrality_corr_*.mat / .fig / .png
+  compare_anderson_vs_arnold_*
+  D_st_cohort_column.csv / .mat / .fig / .png
+```
+
+Legacy workflows that call `runAllMiceSection45` without `ResultsDir` still write into the flat `results/` directory. Prefer the orchestrator for new work.
+
+---
+
+## Parameter provenance (what gets recorded)
+
+Every orchestrated run records **all parameters** used to generate the results, at the experiment level and inside individual `.mat` artefacts.
+
+### Experiment-level files
+
+| File | Contents |
+|------|----------|
+| `experiment.properties` | Raw Java-style config (`key=value`) as run |
+| `experiment_parameters.mat` | Struct `runParams` — see below |
+| `experiment_parameters.json` | Same struct as JSON (easy diff/review in git or editors) |
+| `run_manifest.mat` | `manifest` (step names, success, duration), `cfg` (parsed config), `runParams` (updated with `finishedAt` and `pipelineSteps`) |
+
+`runParams` is built by `mouseExperimentRunParameters.m` and includes:
+
+- **Metadata:** `experimentName`, `experimentDescription`, `configFile`, `recordedAt`, `resultsDir`
+- **Environment:** MATLAB version, computer arch, hostname, user, toolkit paths
+- **Cohort:** list of mouse IDs and count
+- **`normalisation`:** scheme for this experiment
+- **`section45`:** `parkesC`, `colScale`, `x0Base` / `x0Upper` / `x0Step`, `bisectTol`, `maxK`, `tau0`, `topK`, `discreteTime` (= `false`), `fsolve` tolerances, classical centrality defaults (`alphaPR`, `alphaKZ`, …)
+- **`comparison`:** `corrType`, `alpha` (Bonferroni), `zThreshold`, centrality-plot options
+- **`pipeline`:** which steps were enabled (`runSection45`, `runCentralityCorr`, …)
+- **`output`:** `saveResults`, `plot`, `verbose`
+- **`config`:** full parsed struct from `loadMouseExperimentConfig`
+
+Parameters are saved **at the start** of the run (`experiment_parameters.*`) and **again at the end** (with `finishedAt` and pipeline step outcomes).
+
+### Embedded in each output `.mat`
+
+So a single per-mouse file remains self-describing if copied elsewhere:
+
+| File pattern | Field |
+|--------------|--------|
+| `section45_<mouse>_<scheme>_results.mat` | `results.runParameters` |
+| `section45_summary_<scheme>.mat` | `runParameters` |
+| `compare_anderson_vs_arnold_<scheme>.mat` | `runParameters` |
+| `centrality_corr_<scheme>.mat` | `runParameters` |
+| `D_st_cohort_<scheme>.mat` | `runParameters` |
+
+Manual runs (without the orchestrator) still attach `runParameters` built from each script’s `inputParser` options, but omit experiment metadata unless you pass `'RunParameters', runParams` yourself.
+
+**Inspect parameters in MATLAB:**
+
+```matlab
+load('results/initial_column/experiment_parameters.mat', 'runParams')
+disp(runParams.section45)
+disp(runParams.comparison)
+
+% Or open experiment_parameters.json in any text editor
+```
+
+---
+
+## Configuration file reference (`.properties`)
+
+Files live in `configs/`. Syntax: `key=value`, `#` comments, one key per line.
+
+### Experiment identity
+
+| Key | Description |
+|-----|-------------|
+| `experiment.name` | Folder name under `results/` (e.g. `initial_column` or `2026-05-23_14-30-00_column`) |
+| `experiment.description` | Free-text note stored in `runParams` |
+
+### Normalisation and §4.5
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `normalisation` | `column` | `column`, `parkes`, `tvb`, or `none` |
+| `parkes.c` | `1.0` | Parkes rescaling constant \(c\) |
+| `col.scale` | `0.95` | Target column sum for column normalisation |
+| `x0.base` | `-2.3` | Healthy excitability (Epileptor schemes) |
+| `x0.upper` | `-1.0` | Upper bound of per-node \(x_0^c\) search |
+| `x0.step` | `0.01` | Coarse sweep step |
+| `bisect.tol` | `1e-4` | Bisection tolerance in \(x_0\) |
+| `max.k` | `1e8` | `covariancesGaussianNet` iteration cap |
+| `tau0` | `6667` | 1-D Epileptor slow timescale |
+| `top.k` | `10` | Top nodes in summary CSV / reports |
+
+### Comparisons and reports
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `corr.type` | `Spearman` | Correlation type in `compareCentralityMeasures` |
+| `alpha` | `0.05` | Family-wise level for Bonferroni outlier flagging in `compareAndersonVsArnold` |
+| `z.threshold` | `2` | Minimum \|z\| shown in `reportAndersonOutliers` |
+
+### Pipeline and output
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `pipeline.runHeatmap` | `false` | Run `compareMouseHeatmap` (scheme-independent QC) |
+| `pipeline.runSection45` | `true` | Per-mouse + cohort summary |
+| `pipeline.runCentralityCorr` | `true` | Stability vs classical centrality correlations |
+| `pipeline.runAndersonVsArnold` | `true` | Strain comparison figures and outlier CSVs |
+| `pipeline.runDstCohort` | `true` | Network-level \(D_{\mathrm{st}}\) bar chart |
+| `pipeline.runReports` | `true` | `reportTopNodes` + `reportAndersonOutliers` → `reports.log` |
+| `pipeline.stopOnError` | `false` | If `true`, abort the experiment on first failed step |
+| `save.results` | `true` | Write `.mat` / figures / CSVs |
+| `plot` | `true` | Generate figures during §4.5 |
+| `verbose` | `true` | Per-node console output in §4.5 |
+
+---
+
+## Script layout
 
 | Path | Role |
 |------|------|
-| `setupMousePaths.m` | Adds linsync root, optional `../2019_03_03_BCT/` (BCT), and this folder to the MATLAB path |
-| `loadMouseConnectome.m` | Loads `data/<mouseId>/fine_family_labelled_coarse.csv` and returns `K`, region labels, and a `info.isTrivial` flag for empty rows |
-| `compareMouseHeatmap.m` | Sanity check: render `imagesc(K)` for every mouse so you can compare visually with `data/<mouseId>/coarse_connectome_<mouseid>.png` |
-| `runMouseSection45.m` | Per-mouse driver -- mirrors `runEZ1_section45.m`. Healthy 1-D Epileptor on K, computes \(D(\to i)\), \(D(k \to)\), per-node critical excitability \(x^{c}_{0,i}\) |
-| `runAllMiceSection45.m` | Loops over all 6 mice, ranks nodes within each mouse and aggregated across mice, saves CSV summary + cross-mouse overview |
-| `compareAndersonVsArnold.m` | For each Anderson mouse, plots per-node \(D(\to i)\) and \(D(k \to)\) against the Arnold cohort mean ± SD; flags nodes with \|z\| ≥ threshold |
-| `data/<mouseId>/` | Coarse connectome CSV, reference PNG, and the underlying compact connectome (unused here) |
-| `results/` | Per-mouse `.mat` results, scatter figures, summary CSV, overview figure |
+| `setupMousePaths.m` | Add linsync root, BCT, and this folder to the path; optional `ExperimentName` → `results/<name>/` |
+| `resolveMouseResultsDir.m` | Resolve `ResultsDir` name-value for all writers |
+| `loadMouseExperimentConfig.m` | Parse `.properties` → MATLAB struct |
+| `mouseExperimentRunParameters.m` | Build / merge / save `runParams` provenance |
+| `newMouseExperiment.m` | Create timestamped config from template |
+| `runMouseExperiment.m` | **Orchestrator** — full pipeline from one config file |
+| `runAllMouseExperiments.m` | Run every `configs/*.properties` except the template |
+| `loadMouseConnectome.m` | Load `data/<mouseId>/fine_family_labelled_coarse.csv` |
+| `runMouseSection45.m` | Per-mouse §4.5 driver |
+| `runAllMiceSection45.m` | Loop cohort + cross-mouse summary |
+| `compareMouseHeatmap.m` | Visual QC vs reference PNGs |
+| `compareCentralityMeasures.m` | Correlation heatmaps / bar charts |
+| `compareAndersonVsArnold.m` | Anderson vs Arnold per-node plots + outliers |
+| `compareDstAcrossCohort.m` | Cohort \(D_{\mathrm{st}}\) table and figure |
+| `reportTopNodes.m` | Print top regions from summary CSV |
+| `reportAndersonOutliers.m` | Print outlier tables from comparison CSVs |
+| `configs/` | Experiment configs |
+| `data/<mouseId>/` | Connectome CSV and reference images |
+| `results/<experimentName>/` | Outputs for one experiment run |
+
+---
 
 ## Inputs
 
@@ -30,66 +242,61 @@ data/<mouseId>/fine_family_labelled_coarse.csv
 
 This is a 67-line CSV: header row + 66 data rows. Column 1 is the row label (`L-CORTEX_VISUAL`, ..., `R-BACKGROUND`); the remaining 66 columns hold the symmetric weighted adjacency.
 
-Several "rows" are placeholders that have no real connectivity (`L-BACKGROUND`, `R-BACKGROUND`, and a few `*_MASK` rows). `loadMouseConnectome` flags them in `info.isTrivial` and `runMouseSection45` skips them in the per-node sweep.
+Placeholder rows (`L-BACKGROUND`, `R-BACKGROUND`, `*_MASK`) are flagged in `info.isTrivial` and skipped in the per-node \(x_0^c\) sweep.
 
-## Workflow per mouse
+## Workflow per mouse (§4.5)
 
 1. Load the 66×66 raw weighted matrix `K_raw`.
-2. Normalise it. Schemes available via `applyConnectomeNormalisation` in the linsync root:
-    - `tvb` (default) — `normal()`: zero diagonal, truncate at the 95th percentile of off-diagonal entries, rescale to `[0,1]`.
-    - `none` — pass `K_raw` through unchanged.
-    - `parkes` — `nctpy.utils.matrix_normalization` from Parkes et al. (Nat Protoc 2024, [doi:10.1038/s41596-024-01023-w](https://doi.org/10.1038/s41596-024-01023-w)): `A_norm = A / (|λ(A)|_max + c)`, with `c = ParkesC` (default 1). The continuous-time `-I` subtraction described in the paper is applied implicitly inside linsync's `con2cov` (which solves `dX = -X(I − C) dt + dW`), so we deliberately stop at the rescaling step. With this scheme the script **skips the Epileptor fixed-point solve and the per-node `x_0^c` sweep**: `A_norm` is fed straight in as the coupling matrix `C` and only `D(→i)` and `D(k→)` are computed (Liao & Lizier-style stability centralities on the Parkes-normalised connectome).
-3. Solve the healthy-state 1-D Epileptor fixed point with `x0_i = -2.3` for all i.
-4. Form the effective coupling matrix `C` (`CouplingMatrix.m` in linsync root).
-5. Compute \(\Omega\) via `covariancesGaussianNet(C, false, MaxK, false, 1)` and read \(D(\to i) = \Omega_{ii}\). Repeat with \(C^{\top}\) for \(D(k \to)\).
-6. For each non-trivial node, sweep \(x_{0,i}\) upward from −2.3 (others held at −2.3) until \(\rho(C) \geq 1\); coarse step 0.01 + bisection to 1e-4 in \(x_0\).
-7. Render the §4.5 two-panel scatter and persist `_results.mat` / `_figure.{fig,png}`.
+2. Normalise via `applyConnectomeNormalisation` (see scheme table below).
+3. **Epileptor schemes (`tvb`, `none`):** solve healthy fixed point, form `C`, compute \(\Omega\), sweep \(x_{0,i}^c\) per non-trivial node.
+4. **Linear schemes (`parkes`, `column`):** use normalised `K` as `C` directly (no Epileptor solve / no \(x_0^c\) sweep).
+5. Compute \(D(\to i)\), \(D(k \to)\) from `covariancesGaussianNet` (continuous-time: `discreteTime = false`).
+6. Save results, figures, and `runParameters`.
 
-## Cross-mouse standout nodes
+### Normalisation schemes
 
-`runAllMiceSection45.m` collects the per-mouse vectors and produces:
+| Scheme | Epileptor + \(x_0^c\) sweep? | Notes |
+|--------|------------------------------|-------|
+| `tvb` | Yes | TVB-style 95th-percentile truncate + rescale to `[0,1]` |
+| `none` | Yes | Raw `K` (no rescaling) |
+| `parkes` | No | \(A / (\|\lambda\|_{\max} + c)\); symmetric \(K\) ⇒ \(D(k\to) \equiv D(\to i)\) |
+| `column` | No | Column-sum scaling; \(D(k\to) \neq D(\to i)\) in general |
 
-- `results/section45_summary_topnodes_<scheme>.csv` — for every region: mean rank across mice (by \(x^{c}_{0,i}\), \(D(\to i)\), \(D(k \to)\)) plus the raw per-mouse values. Sorted by aggregate \(x^{c}_{0,i}\) rank (most epileptogenic first).
-- `results/section45_summary_overview_<scheme>.png` — region × mouse heatmaps for \(x^{c}_{0,i}\), \(D(\to i)\), \(D(k \to)\). Useful for spotting nodes that are consistently low-\(x^c\) across animals (i.e. structurally susceptible regardless of mouse).
+## Cross-mouse summary
 
-## Anderson vs Arnold per-node comparison
+`runAllMiceSection45` produces (under the experiment results folder):
 
-`compareAndersonVsArnold.m` consumes the per-mouse `_results.mat` files written by `runAllMiceSection45` and, for each Anderson mouse, produces a 2-panel figure (one panel per centrality) overlaying:
+- `section45_summary_topnodes_<scheme>.csv` — mean ranks and per-mouse values
+- `section45_summary_overview_<scheme>.{fig,png}` — region × mouse heatmaps (1–3 panels depending on scheme)
+- `section45_summary_<scheme>.mat` — packed matrices + `runParameters`
 
-- shaded band — Arnold mean ± SD per node
-- blue line — Arnold mean per node
-- grey dots — individual Arnold values per node
-- red markers — the Anderson mouse's per-node value
-- black ring + label — nodes whose \|z\| = \|(Anderson − Arnold mean) / Arnold SD\| exceeds `ZThreshold` (default 2)
+## Anderson vs Arnold comparison
 
-Outputs (under `results/`):
+`compareAndersonVsArnold` loads per-mouse `section45_*_results.mat` and, for each Anderson mouse, plots **three panels**: \(D(\to i)\), \(D(k \to)\), and betweenness centrality vs the Arnold cohort mean ± SD.
 
-- `compare_anderson_vs_arnold_<mouseId>_<scheme>.{fig,png}` — per-Anderson figures
-- `compare_anderson_vs_arnold_<mouseId>_<scheme>_outliers.csv` — list of flagged nodes with both centrality values, Arnold mean/SD, and z-scores, sorted by largest \|z\|
-- `compare_anderson_vs_arnold_<scheme>.mat` — packed matrices for downstream analysis
+Outlier **flagging** uses **Bonferroni correction** at `alpha` from the config (default `0.05`), not a simple \|z\| > `z.threshold`. The `z.threshold` key controls what `reportAndersonOutliers` **displays** in `reports.log`.
 
-Run after the per-mouse pipeline:
+Outputs:
+
+- `compare_anderson_vs_arnold_<mouseId>_<scheme>.{fig,png}`
+- `compare_anderson_vs_arnold_<mouseId>_<scheme>_outliers.csv`
+- `compare_anderson_vs_arnold_<scheme>.mat` (includes `runParameters`)
+
+---
+
+## Manual / legacy workflow
+
+You can still call scripts directly. Outputs go to flat `results/` unless you pass an explicit directory:
 
 ```matlab
-compareAndersonVsArnold;                      % uses tvb scheme, z=2
-compareAndersonVsArnold('ZThreshold', 1.5);   % stricter outlier net
-```
-
-## Quick start
-
-```matlab
-cd mouse-epilepsy-daria-anderson-experiment
 setupMousePaths();
+resultsDir = setupMousePaths('ExperimentName', 'my_manual_run');
 
-compareMouseHeatmap                 % visual sanity check vs reference PNGs
-results = runMouseSection45('Anderson_1');   % single mouse
-runAllMiceSection45                 % all 6 mice + cross-mouse summary
-compareAndersonVsArnold             % Anderson-vs-Arnold per-node comparison
-
-% Parkes normalisation (no Epileptor solve / no x0 sweep)
-runMouseSection45('Anderson_1', 'Normalisation', 'parkes');
-runAllMiceSection45;                                % edit `normalisation = 'parkes'` first
-compareAndersonVsArnold('Normalisation', 'parkes');
+compareMouseHeatmap('ResultsDir', resultsDir);
+runAllMiceSection45('Normalisation', 'column', 'ResultsDir', resultsDir);
+compareAndersonVsArnold('Normalisation', 'column', 'ResultsDir', resultsDir);
 ```
 
-Per-mouse runtime is similar to the human Epileptor case (~10 min / mouse); all six mice take ~1 hour with default settings.
+Per-mouse §4.5 files will contain `results.runParameters` built from that script’s options only (no full experiment config unless you pass `'RunParameters', ...`).
+
+**Runtime:** ~10 min per mouse for `tvb`; ~1 hour for all five mice at default settings.

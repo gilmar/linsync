@@ -8,6 +8,7 @@
 %   compareMouseHeatmap                     % default = 'reference' style
 %   compareMouseHeatmap('reference')        % match reference PNG layout
 %   compareMouseHeatmap('csv')              % keep CSV row/column order
+%   compareMouseHeatmap('ResultsDir', path) % write figures under path
 %
 % Layout styles:
 %   'csv'        - imagesc(K) verbatim. Row 1 (L-CORTEX_VISUAL) at the top,
@@ -23,13 +24,20 @@
 % Color scaling is linear from 0 to the 99th percentile of the
 % non-diagonal entries to suppress saturation by self-loops.
 
-function compareMouseHeatmap(style)
-if nargin < 1 || isempty(style)
-    style = 'reference';
+function compareMouseHeatmap(varargin)
+setupMousePaths();
+style = 'reference';
+nvArgs = varargin;
+if ~isempty(varargin) && (ischar(varargin{1}) || isstring(varargin{1})) ...
+        && ismember(lower(char(varargin{1})), {'csv', 'reference'})
+    style = char(varargin{1});
+    nvArgs = varargin(2:end);
 end
+p = inputParser;
+addParameter(p, 'ResultsDir', '', @(s) ischar(s) || isstring(s));
+parse(p, nvArgs{:});
 style = validatestring(style, {'csv', 'reference'});
-
-resultsDir = setupMousePaths();
+resultsDir = resolveMouseResultsDir(p.Results.ResultsDir);
 
 mice = listAvailableMice();
 nMice = numel(mice);

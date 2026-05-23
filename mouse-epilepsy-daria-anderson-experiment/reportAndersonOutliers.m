@@ -11,16 +11,18 @@ function reportAndersonOutliers(varargin)
 %   reportAndersonOutliers('SortBy', 'infl')        % sort by |z_infl|
 %
 % Parameters:
-%   'Normalisation'  – 'parkes' or 'tvb'   (default 'parkes')
+%   'Normalisation'  – 'parkes', 'tvb', or 'column' (default 'parkes')
 %   'ZThreshold'     – minimum |z| to show  (default 2)
 %   'N'              – max rows per mouse   (default Inf = show all)
 %   'SortBy'         – 'susc' or 'infl'     (default 'susc')
+%   'ResultsDir'     – output folder (default results/)
 
 p = inputParser();
 p.addParameter('Normalisation', 'parkes', @(x) ischar(x) || isstring(x));
 p.addParameter('ZThreshold',    2,        @(x) isnumeric(x) && isscalar(x) && x >= 0);
 p.addParameter('N',             Inf,      @(x) isnumeric(x) && isscalar(x) && x > 0);
 p.addParameter('SortBy',        'susc',   @(x) ischar(x) || isstring(x));
+p.addParameter('ResultsDir',    '',       @(x) ischar(x) || isstring(x));
 p.parse(varargin{:});
 opts = p.Results;
 
@@ -33,8 +35,7 @@ switch sortStr
     otherwise,    error('reportAndersonOutliers: SortBy must be ''susc'' or ''infl''.');
 end
 
-experimentRoot = fileparts(mfilename('fullpath'));
-resultsDir = fullfile(experimentRoot, 'results');
+resultsDir = resolveMouseResultsDir(opts.ResultsDir);
 
 % Discover Anderson outlier CSVs for this scheme
 pattern = fullfile(resultsDir, sprintf('compare_anderson_vs_arnold_Anderson_*_%s_outliers.csv', normStr));
