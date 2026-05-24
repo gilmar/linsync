@@ -54,12 +54,11 @@ scheme = char(opts.Normalisation);
 resultsDir = resolveMouseResultsDir(opts.ResultsDir);
 
 %% Discover and load per-mouse result files
-pattern = sprintf('stabilityCentralities_*_%s_results.mat', scheme);
-files = dir(fullfile(resultsDir, pattern));
+files = listPerMouseResultFiles(resultsDir, scheme);
 if isempty(files)
     error('compareAndersonVsArnold:NoResults', ...
-        'No files matching %s found under %s. Run runAllMiceStabilityCentralities first.', ...
-        pattern, resultsDir);
+        'No stabilityCentralities_*_%s_results.mat found under %s. Run runAllMiceStabilityCentralities first.', ...
+        scheme, resultsDir);
 end
 
 mice    = cell(0, 1);
@@ -228,6 +227,7 @@ for a = 1:numel(andersonNames)
         catch
             saveas(fig, fullfile(resultsDir, [baseName '.png']));
         end
+        close(fig);
 
         outMask = outlierMaskSusc | outlierMaskInfl | outlierMaskBC;
         outIdx = find(outMask);
@@ -408,7 +408,7 @@ if ~isempty(outlierIdx)
         i = outlierIdx(k);
         text(ax, i, anderVals(i), ...
             sprintf('  %s (z=%+.1f)', labels{i}, zScore(i)), ...
-            'Interpreter', 'none', 'FontSize', 7, 'Rotation', 45, ...
+            'Interpreter', 'none', 'FontSize', 7, 'Rotation', 25, ...
             'VerticalAlignment', 'bottom');
     end
 end
@@ -417,7 +417,7 @@ xlim(ax, [0.5 N + 0.5]);
 ylim(ax, yl);
 set(ax, 'XTick', 1:N, 'XTickLabel', labels, ...
     'TickLabelInterpreter', 'none', 'FontSize', 6);
-xtickangle(ax, 75);
+xtickangle(ax, 45);
 grid(ax, 'on'); box(ax, 'on');
 ylabel(ax, ylab, 'Interpreter', 'tex');
 title(ax, panelTitle, 'Interpreter', 'tex');

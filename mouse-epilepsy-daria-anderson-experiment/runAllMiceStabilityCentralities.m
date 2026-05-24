@@ -76,7 +76,15 @@ for m = 1:numel(mice)
 end
 fprintf('\nAll mice processed in %.1f s.\n', toc(totalTic));
 
+nOk = sum(~cellfun(@isempty, allResults));
+if nOk < numel(mice)
+    error('runAllMiceStabilityCentralities:IncompleteCohort', ...
+        ['Only %d/%d mice produced results. Fix errors above and re-run. ' ...
+         'Partial summary files are not written.'], nOk, numel(mice));
+end
+
 %% Cross-mouse summary -----------------------------------------------
+resultPrefix = mouseExperimentResultPrefix();
 canonicalLabels = [];
 for m = 1:numel(mice)
     if ~isempty(allResults{m})
@@ -93,12 +101,16 @@ M = numel(mice);
 D_susc_all = NaN(N, M);
 D_infl_all = NaN(N, M);
 x0_crit_all = NaN(N, M);
+isTrivial_any_mouse = false(N, 1);
 for m = 1:M
     if isempty(allResults{m}); continue; end
     r = allResults{m};
     D_susc_all(:, m)  = r.D_susceptibility;
     D_infl_all(:, m)  = r.D_influence;
     x0_crit_all(:, m) = r.x0_crit;
+    if isfield(r, 'isTrivial') && ~isempty(r.isTrivial)
+        isTrivial_any_mouse = isTrivial_any_mouse | logical(r.isTrivial(:));
+    end
 end
 
 [rank_susc, rank_infl, rank_x0] = deal(NaN(N, M));
@@ -138,7 +150,7 @@ for kk = 1:min(topK, N)
 end
 
 %% Save summary CSV
-header = {'rank', 'region', 'mean_rank_x0', 'mean_rank_susc', 'mean_rank_infl'};
+header = {'rank', 'region', 'is_trivial', 'mean_rank_x0', 'mean_rank_susc', 'mean_rank_infl'};
 for m = 1:M
     header{end+1} = sprintf('x0_crit__%s', mice{m}); %#ok<SAGROW>
 end
@@ -154,10 +166,11 @@ for kk = 1:N
     i = agg_ord(kk);
     summaryTable{kk, 1} = kk;
     summaryTable{kk, 2} = canonicalLabels{i};
-    summaryTable{kk, 3} = mean_rank_x0(i);
-    summaryTable{kk, 4} = mean_rank_susc(i);
-    summaryTable{kk, 5} = mean_rank_infl(i);
-    col = 6;
+    summaryTable{kk, 3} = double(isTrivial_any_mouse(i));
+    summaryTable{kk, 4} = mean_rank_x0(i);
+    summaryTable{kk, 5} = mean_rank_susc(i);
+    summaryTable{kk, 6} = mean_rank_infl(i);
+    col = 7;
     for m = 1:M
         summaryTable{kk, col} = x0_crit_all(i, m); col = col + 1;
     end
@@ -170,7 +183,7 @@ for kk = 1:N
 end
 
 T = cell2table(summaryTable, 'VariableNames', header);
-csvFile = fullfile(resultsDir, sprintf('stabilityCentralities_summary_topnodes_%s.csv', normalisation));
+csvFile = fullfile(resultsDir, sprintf('%s_summary_topnodes_%s.csv', resultPrefix, normalisation));
 writetable(T, csvFile);
 fprintf('\nWrote summary table %s\n', csvFile);
 
@@ -237,12 +250,13 @@ else
     sgtitle(sprintf('Cross-mouse stability centralities  --  normalisation = %s', normalisation));
 end
 
-savefig(overviewFig, fullfile(resultsDir, sprintf('stabilityCentralities_summary_overview_%s.fig', normalisation)));
+savefig(overviewFig, fullfile(resultsDir, sprintf('%s_summary_overview_%s.fig', resultPrefix, normalisation)));
 try
-    exportgraphics(overviewFig, fullfile(resultsDir, sprintf('stabilityCentralities_summary_overview_%s.png', normalisation)), 'Resolution', 200);
+    exportgraphics(overviewFig, fullfile(resultsDir, sprintf('%s_summary_overview_%s.png', resultPrefix, normalisation)), 'Resolution', 200);
 catch
-    saveas(overviewFig, fullfile(resultsDir, sprintf('stabilityCentralities_summary_overview_%s.png', normalisation)));
+    saveas(overviewFig, fullfile(resultsDir, sprintf('%s_summary_overview_%s.png', resultPrefix, normalisation)));
 end
+close(overviewFig);
 
 if isempty(opts.RunParameters)
     runParameters = mouseExperimentRunParameters('buildFromStabilityCentralities', opts, 'cohort');
@@ -252,10 +266,10 @@ if isempty(opts.RunParameters)
 else
     runParameters = opts.RunParameters;
 end
-save(fullfile(resultsDir, sprintf('stabilityCentralities_summary_%s.mat', normalisation)), ...
+save(fullfile(resultsDir, sprintf('%s_summary_%s.mat', resultPrefix, normalisation)), ...
     'mice', 'canonicalLabels', 'D_susc_all', 'D_infl_all', 'x0_crit_all', ...
     'mean_rank_susc', 'mean_rank_infl', 'mean_rank_x0', 'normalisation', ...
-    'runParameters');
+    'isTrivial_any_mouse', 'runParameters');
 
 fprintf('\nDone.\n');
 end

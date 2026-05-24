@@ -22,6 +22,8 @@ switch lower(action)
         varargout{1} = buildFromCompareCentrality(varargin{:});
     case 'buildfromcomparedst'
         varargout{1} = buildFromCompareDst(varargin{:});
+    case 'buildfromcomparelr'
+        varargout{1} = buildFromCompareLR(varargin{:});
     case 'merge'
         varargout{1} = mergeParams(varargin{:});
     case 'save'
@@ -43,6 +45,9 @@ runParams = struct();
 runParams.schemaVersion = 2;
 runParams.recordedAt = datestr(now, 'yyyy-mm-dd HH:MM:SS');
 runParams.experimentName = cfg.experimentName;
+if isfield(cfg, 'configExperimentName')
+    runParams.configExperimentName = cfg.configExperimentName;
+end
 runParams.experimentDescription = cfg.experimentDescription;
 runParams.configFile = cfg.propsFile;
 runParams.resultsDir = char(p.Results.ResultsDir);
@@ -58,6 +63,7 @@ end
 runParams.cohort.nMice = numel(runParams.cohort.mice);
 
 runParams.normalisation = cfg.normalisation;
+runParams.resultFilePrefix = mouseExperimentResultPrefix();
 
 runParams.stabilityCentralities = struct( ...
     'normalisation', cfg.normalisation, ...
@@ -87,6 +93,7 @@ runParams.pipeline = struct( ...
     'runStabilityCentralities', cfg.pipelineRunStabilityCentralities, ...
     'runCentralityCorr', cfg.pipelineRunCentralityCorr, ...
     'runAndersonVsArnold', cfg.pipelineRunAndersonVsArnold, ...
+    'runLRAsymmetry', cfg.pipelineRunLRAsymmetry, ...
     'runDstCohort', cfg.pipelineRunDstCohort, ...
     'runReports', cfg.pipelineRunReports, ...
     'stopOnError', cfg.pipelineStopOnError);
@@ -170,6 +177,19 @@ runParams.resultsDir = char(resultsDir);
 runParams.comparison = struct( ...
     'normalisation', char(scheme), ...
     'saveResults', opts.SaveResults);
+end
+
+%% ------------------------------------------------------------------
+function runParams = buildFromCompareLR(opts, scheme, resultsDir)
+runParams = struct('schemaVersion', 1, 'recordedAt', datestr(now, 'yyyy-mm-dd HH:MM:SS'));
+runParams.normalisation = char(scheme);
+runParams.resultsDir = char(resultsDir);
+runParams.comparison = struct( ...
+    'normalisation', char(scheme), ...
+    'alpha', opts.Alpha, ...
+    'zThreshold', opts.ZThreshold, ...
+    'saveResults', opts.SaveResults, ...
+    'analysis', 'leftRightAsymmetry');
 end
 
 %% ------------------------------------------------------------------

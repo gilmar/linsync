@@ -53,6 +53,7 @@ for f = 1:numel(files)
 end
 
 sepLen = 74;
+[valFmt, meanFmt, sdFmt] = andersonOutlierValueFormats(normStr);
 fprintf('\nAnderson vs Arnold outliers  |  normalisation=%s  |  |z|>=%.1f  |  sorted by |%s|\n', ...
         normStr, opts.ZThreshold, zCol);
 fprintf('%s\n', repmat('=', 1, sepLen));
@@ -81,9 +82,17 @@ for f = 1:numel(files)
     for k = 1:nShow
         row  = T(k, :);
         zval = row.(zCol);
-        if zval > 0, dir_ = 'HIGH'; else, dir_ = 'LOW'; end
-        fprintf('  %-32s  %8.1f  %8.1f  %8.1f  %+7.2f  %s\n', ...
-                row.Region, row.(valCol), row.(meanCol), row.(sdCol), zval, dir_);
+        if isnan(zval)
+            zStr = '    NaN';
+        else
+            if zval > 0, dir_ = 'HIGH'; else, dir_ = 'LOW'; end
+            zStr = sprintf('%+7.2f', zval);
+        end
+        if isnan(zval)
+            dir_ = '-';
+        end
+        fprintf(['  %-32s  ' valFmt '  ' meanFmt '  ' sdFmt '  %s  %s\n'], ...
+                row.Region, row.(valCol), row.(meanCol), row.(sdCol), zStr, dir_);
     end
     if height(T) > nShow
         fprintf('  ... (%d more not shown)\n', height(T) - nShow);
@@ -131,4 +140,27 @@ else
     fprintf('%s\n', repmat('-', 1, sepLen));
 end
 fprintf('\n');
+end
+
+%% ------------------------------------------------------------------
+function [valFmt, meanFmt, sdFmt] = andersonOutlierValueFormats(normStr)
+%ANDERSONOUTLIERVALUEFORMATS  printf formats matched to scheme magnitude.
+switch lower(normStr)
+    case {'column', 'col', 'colnorm'}
+        valFmt  = '%8.4f';
+        meanFmt = '%8.4f';
+        sdFmt   = '%8.4f';
+    case 'parkes'
+        valFmt  = '%10.1f';
+        meanFmt = '%10.1f';
+        sdFmt   = '%8.2f';
+    case 'tvb'
+        valFmt  = '%9.2f';
+        meanFmt = '%9.2f';
+        sdFmt   = '%7.3f';
+    otherwise
+        valFmt  = '%9.4g';
+        meanFmt = '%9.4g';
+        sdFmt   = '%8.4g';
+end
 end

@@ -64,12 +64,11 @@ end
 resultsDir = resolveMouseResultsDir(opts.ResultsDir);
 
 %% Discover and load per-mouse result files
-pattern = sprintf('stabilityCentralities_*_%s_results.mat', scheme);
-files = dir(fullfile(resultsDir, pattern));
+files = listPerMouseResultFiles(resultsDir, scheme);
 if isempty(files)
     error('compareCentralityMeasures:NoResults', ...
-        'No files matching %s found under %s. Run runAllMiceStabilityCentralities first.', ...
-        pattern, resultsDir);
+        'No stabilityCentralities_*_%s_results.mat found under %s. Run runAllMiceStabilityCentralities first.', ...
+        scheme, resultsDir);
 end
 
 [measures, displayLabels] = defineMeasures();
@@ -376,6 +375,7 @@ try
 catch
     saveas(fig, [basePath '.png']);
 end
+close(fig);
 end
 
 %% ------------------------------------------------------------------

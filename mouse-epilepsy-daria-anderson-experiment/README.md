@@ -9,11 +9,13 @@ Apply the **stability centralities** workflow (per-node \(D(\to i)\), \(D(k \to)
 
 ## Cohort
 
-Five mice have the coarse CSV required by the pipeline:
+The reference cohort has five coarse connectomes:
 
 `Anderson_1`, `Anderson_2`, `Arnold_3`, `Arnold_4`, `Arnold_5`
 
-`Arnold_2` has other data files but **no** `fine_family_labelled_coarse.csv` and is skipped automatically.
+`Arnold_2` has other data files but **no** `fine_family_labelled_coarse.csv` and is skipped automatically. An extra folder such as `Arnold_1` is included if its CSV is present (`listAvailableMice` discovers all `data/<mouseId>/fine_family_labelled_coarse.csv` files).
+
+**Git checkout:** this repository currently ships connectome CSVs for **`Arnold_5` only** (`data/Arnold_5/fine_family_labelled_coarse.csv`). Add the other four mice under `data/<mouseId>/` locally (same filename) for the full cohort; `listAvailableMice` discovers whatever is present. With a partial cohort, per-mouse stability and cohort \(D_{st}\) plots still run; Anderson-vs-Arnold comparison and related reports are skipped until at least one Anderson and one Arnold mouse are available.
 
 ---
 
@@ -23,7 +25,7 @@ Use a **`.properties` config file** per experiment. Each experiment has:
 
 - **One normalisation scheme** (`column`, `parkes`, or `tvb`)
 - **One parameter set** (Epileptor bounds, Parkes constant, comparison settings, etc.)
-- **Its own results folder** under `results/<experiment.name>/`, so runs never overwrite each other
+- **Its own results folder** under `results/<experiment.name>_<yyyy-mm-dd_HHMM>/` (config name + run timestamp), so runs never overwrite each other
 
 ### Quick start
 
@@ -60,15 +62,35 @@ When pipeline flags are `true` (defaults), the orchestrator runs these steps **i
 | Step | Script | Output (examples) |
 |------|--------|-------------------|
 | Optional QC | `compareMouseHeatmap` | `mouse_heatmaps_overview_*.{fig,png}` |
-| Per-mouse stability centralities | `runAllMiceStabilityCentralities` | `stabilityCentralities_<mouse>_<scheme>_results.mat`, figures, summary CSV/overview |
-| Centrality correlations | `compareCentralityMeasures` | `centrality_corr_*` |
+| Per-mouse stability centralities | `runAllMiceStabilityCentralities` | `stabilityCentralities_<mouse>_<scheme>_results.mat`, `_figure.{fig,png}`, summary CSV/overview |
+| Centrality correlations | `compareCentralityMeasures` | `centrality_corr_*` (only if cohort step succeeded) |
 | Anderson vs Arnold | `compareAndersonVsArnold` | `compare_anderson_vs_arnold_*` |
+| Left–right asymmetry | `compareLeftRightAsymmetry` | `compare_LR_asymmetry_*`, `LR_asymmetry_*` |
 | Network \(D_{\mathrm{st}}\) | `compareDstAcrossCohort` | `D_st_cohort_*` |
 | Console reports | `reportTopNodes`, `reportAndersonOutliers` | `reports.log` |
 
-After the stability-centralities step, the orchestrator checks that every available mouse produced a `stabilityCentralities_*_<scheme>_results.mat` file. Step success and timing are recorded in `run_manifest.mat`.
+After the per-mouse step, the orchestrator checks that **every** available mouse produced a `stabilityCentralities_*_<scheme>_results.mat` file. If any mouse fails, `runAllMiceStabilityCentralities` errors out (no partial summary), comparison/report steps are **skipped**, and `run_manifest.mat` records which step failed.
+
+A complete single-scheme experiment has the same **types** of artefact as [`results/mouse_experiment_reference/`](results/mouse_experiment_reference/). That folder is a **flat, multi-scheme snapshot** (column + parkes + tvb together) saved with the legacy `section45_*` prefix; new orchestrated runs use **`stabilityCentralities_*`** for the same per-mouse and summary files.
+
+At the end of `runMouseExperiment`, `assertMouseExperimentOutputs` checks that every required file for the enabled pipeline steps exists (see table below). Anderson outlier CSVs are optional (only written when Bonferroni outliers exist).
 
 Disable steps with `pipeline.run*` keys in the properties file (e.g. `pipeline.runHeatmap=true` for connectome QC only).
+
+### Expected outputs per scheme (checked by `assertMouseExperimentOutputs`)
+
+For each of the five cohort mice, with `save.results=true` and all pipeline steps enabled:
+
+| Category | Files (prefix `stabilityCentralities` unless noted) |
+|----------|---------------------------------------------------|
+| Per mouse (×5) | `<prefix>_<mouse>_<scheme>_results.mat`, `_figure.{fig,png}` |
+| Cohort summary | `<prefix>_summary_topnodes_<scheme>.csv`, `_summary_overview_<scheme>.{fig,png}`, `_summary_<scheme>.mat` |
+| Centrality comparison | `centrality_corr_<mouse>_<scheme>.{fig,png}` (×5), `centrality_corr_mean_<scheme>.{fig,png}`, `centrality_corr_bars_<scheme>.{fig,png}`, `centrality_corr_<scheme>.mat` |
+| Anderson vs Arnold | One fig/png per **Anderson** mouse (`Anderson_1`, `Anderson_2`) vs Arnold cohort mean±SD; plus `compare_anderson_vs_arnold_<scheme>.mat`, optional `*_outliers.csv` per Anderson mouse |
+| Left–right asymmetry | `compare_LR_asymmetry_<anderson>_<scheme>.{fig,png}`, optional `*_outliers.csv`; `LR_asymmetry_groupTest_<scheme>.{csv,fig,png}`; `LR_asymmetry_systematic_<scheme>.{csv,fig,png}`; `LR_asymmetry_<scheme>.mat` |
+| Network \(D_{\mathrm{st}}\) | `D_st_cohort_<scheme>.{csv,fig,png,mat}` |
+| QC (optional) | `mouse_heatmaps_overview_reference.{fig,png}` |
+| Provenance | `experiment.properties`, `experiment_parameters.{mat,json}`, `run_manifest.mat`, `reports.log` |
 
 ---
 
@@ -76,10 +98,10 @@ Disable steps with `pipeline.run*` keys in the properties file (e.g. `pipeline.r
 
 Each experiment writes to **`results/<experiment.name>/`** (not the legacy flat `results/` root, unless you call scripts manually without an experiment name).
 
-Example after `runMouseExperiment('configs/initial_column.properties')`:
+Example after `runMouseExperiment('configs/initial_column.properties')` (if run at 2026-05-23 14:30):
 
 ```
-results/initial_column/
+results/initial_column_2026-05-23_1430/
   experiment.properties          # exact config copied at run start
   experiment_parameters.mat      # full parameter snapshot (MATLAB)
   experiment_parameters.json     # same snapshot (human-readable)
@@ -88,14 +110,28 @@ results/initial_column/
 
   stabilityCentralities_Anderson_1_column_results.mat
   stabilityCentralities_Anderson_1_column_figure.{fig,png}
-  ...                            # one result set per mouse
+  ...                            # one result set per mouse (5 mice)
   stabilityCentralities_summary_topnodes_column.csv
   stabilityCentralities_summary_overview_column.{fig,png}
   stabilityCentralities_summary_column.mat
 
-  centrality_corr_*.mat / .fig / .png
-  compare_anderson_vs_arnold_*
+  compare_anderson_vs_arnold_Anderson_*_column.{fig,png}
+  compare_anderson_vs_arnold_Anderson_*_column_outliers.csv
+  compare_anderson_vs_arnold_column.mat
+
+  compare_LR_asymmetry_Anderson_*_column.{fig,png}
+  compare_LR_asymmetry_Anderson_*_column_outliers.csv
+  LR_asymmetry_groupTest_column.{csv,fig,png}
+  LR_asymmetry_systematic_column.{csv,fig,png}
+  LR_asymmetry_column.mat
+
+  centrality_corr_<mouse>_column.{fig,png}
+  centrality_corr_mean_column.{fig,png}
+  centrality_corr_bars_column.{fig,png}
+  centrality_corr_column.mat
+
   D_st_cohort_column.csv / .mat / .fig / .png
+  mouse_heatmaps_overview_reference.{fig,png}   # if pipeline.runHeatmap=true
 ```
 
 Legacy workflows that call `runAllMiceStabilityCentralities` without `ResultsDir` still write into the flat `results/` directory. Prefer the orchestrator for new work.
@@ -138,6 +174,7 @@ So a single per-mouse file remains self-describing if copied elsewhere:
 | `stabilityCentralities_<mouse>_<scheme>_results.mat` | `results.runParameters` |
 | `stabilityCentralities_summary_<scheme>.mat` | `runParameters` |
 | `compare_anderson_vs_arnold_<scheme>.mat` | `runParameters` |
+| `LR_asymmetry_<scheme>.mat` | `runParameters` |
 | `centrality_corr_<scheme>.mat` | `runParameters` |
 | `D_st_cohort_<scheme>.mat` | `runParameters` |
 
@@ -163,7 +200,7 @@ Files live in `configs/`. Syntax: `key=value`, `#` comments, one key per line.
 
 | Key | Description |
 |-----|-------------|
-| `experiment.name` | Folder name under `results/` (e.g. `initial_column` or `2026-05-23_14-30-00_column`) |
+| `experiment.name` | Base name for the results folder (e.g. `initial_column`); at run time the folder becomes `initial_column_2026-05-23_1430` |
 | `experiment.description` | Free-text note stored in `runParams` |
 
 ### Normalisation and stability centralities
@@ -194,9 +231,10 @@ Files live in `configs/`. Syntax: `key=value`, `#` comments, one key per line.
 | Key | Default | Description |
 |-----|---------|-------------|
 | `pipeline.runHeatmap` | `false` | Run `compareMouseHeatmap` (scheme-independent QC) |
-| `pipeline.runStabilityCentralities` | `true` | Per-mouse + cohort summary |
+| `pipeline.runStabilityCentralities` | `true` | Per-mouse + cohort summary (`pipeline.runSection45` is an alias) |
 | `pipeline.runCentralityCorr` | `true` | Stability vs classical centrality correlations |
 | `pipeline.runAndersonVsArnold` | `true` | Strain comparison figures and outlier CSVs |
+| `pipeline.runLRAsymmetry` | `true` | Left–right laterality (Anderson vs Arnold per pair + group tests) |
 | `pipeline.runDstCohort` | `true` | Network-level \(D_{\mathrm{st}}\) bar chart |
 | `pipeline.runReports` | `true` | `reportTopNodes` + `reportAndersonOutliers` → `reports.log` |
 | `pipeline.stopOnError` | `false` | If `true`, abort the experiment on first failed step |
@@ -219,10 +257,15 @@ Files live in `configs/`. Syntax: `key=value`, `#` comments, one key per line.
 | `runAllMouseExperiments.m` | Run every `configs/*.properties` except the template |
 | `loadMouseConnectome.m` | Load `data/<mouseId>/fine_family_labelled_coarse.csv` |
 | `runMouseStabilityCentralities.m` | Per-mouse stability centralities driver |
-| `runAllMiceStabilityCentralities.m` | Loop cohort + cross-mouse summary |
+| `runAllMiceStabilityCentralities.m` | Loop cohort + cross-mouse summary (`stabilityCentralities_*` filenames) |
+| `mouseExperimentResultPrefix.m` | Returns `stabilityCentralities` (result artefact prefix) |
+| `mouseExperimentFolderName.m` | Build `configName_yyyy-mm-dd_HHMM` results subfolder |
+| `listPerMouseResultFiles.m` | Find per-mouse `*_results.mat` (stabilityCentralities or legacy section45) |
+| `assertMouseExperimentOutputs.m` | Post-run checklist vs reference artefact types |
 | `compareMouseHeatmap.m` | Visual QC vs reference PNGs |
 | `compareCentralityMeasures.m` | Correlation heatmaps / bar charts |
 | `compareAndersonVsArnold.m` | Anderson vs Arnold per-node plots + outliers |
+| `compareLeftRightAsymmetry.m` | L–R laterality indices; Anderson vs Arnold per pair + group/systematic views |
 | `compareDstAcrossCohort.m` | Cohort \(D_{\mathrm{st}}\) table and figure |
 | `reportTopNodes.m` | Print top regions from summary CSV |
 | `reportAndersonOutliers.m` | Print outlier tables from comparison CSVs |
@@ -266,13 +309,28 @@ Placeholder rows (`L-BACKGROUND`, `R-BACKGROUND`, `*_MASK`) are flagged in `info
 
 `runAllMiceStabilityCentralities` produces (under the experiment results folder):
 
-- `stabilityCentralities_summary_topnodes_<scheme>.csv` — mean ranks and per-mouse values
+- `stabilityCentralities_summary_topnodes_<scheme>.csv` — mean ranks and per-mouse values. Includes an `is_trivial` column for placeholder rows (`L-/R-BACKGROUND`, `*_MASK`, `*_MASKS`); `reportTopNodes` filters these out by default (pass `'IncludeTrivial', true` to keep them).
 - `stabilityCentralities_summary_overview_<scheme>.{fig,png}` — region × mouse heatmaps (1–3 panels depending on scheme)
 - `stabilityCentralities_summary_<scheme>.mat` — packed matrices + `runParameters`
 
 ## Anderson vs Arnold comparison
 
 `compareAndersonVsArnold` loads per-mouse `stabilityCentralities_*_results.mat` and, for each Anderson mouse, plots **three panels**: \(D(\to i)\), \(D(k \to)\), and betweenness centrality vs the Arnold cohort mean ± SD.
+
+## Left–right hemisphere asymmetry
+
+`compareLeftRightAsymmetry` pairs each `L-<region>` node with `R-<region>` (same suffix) and computes, per mouse and metric:
+
+- **\( \mathrm{LI}_{\mathrm{norm}} = (L - R) / (L + R) \)** — primary laterality index in \([-1, +1]\) (positive ⇒ higher on the L-labelled side)
+- **\( \mathrm{LI}_{\mathrm{signed}} = L - R \)** — signed difference in the metric's units
+
+Metrics: \(D(\to i)\), \(D(k \to)\), and BC (when BCT was used). Three comparison views:
+
+1. **Per Anderson mouse** — z-score of \(\mathrm{LI}_{\mathrm{norm}}\) vs Arnold mean ± SD per region pair; Bonferroni over (pairs × metrics); figures `compare_LR_asymmetry_<mouse>_<scheme>.*`
+2. **Group-level** — Welch t-test per pair × metric; `LR_asymmetry_groupTest_<scheme>.*`
+3. **Systematic direction** — cohort-wide mean \(\mathrm{LI}_{\mathrm{norm}}\) and sign-rank vs zero (answers whether epileptic mice show a consistent L vs R bias); `LR_asymmetry_systematic_<scheme>.*`
+
+Full packed results: `LR_asymmetry_<scheme>.mat`. Disable with `pipeline.runLRAsymmetry=false` in the config.
 
 Outlier **flagging** uses **Bonferroni correction** at `alpha` from the config (default `0.05`), not a simple \|z\| > `z.threshold`. The `z.threshold` key controls what `reportAndersonOutliers` **displays** in `reports.log`.
 

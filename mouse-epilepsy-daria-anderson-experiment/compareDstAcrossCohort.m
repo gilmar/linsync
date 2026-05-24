@@ -35,11 +35,10 @@ scheme = char(opts.Normalisation);
 
 resultsDir = resolveMouseResultsDir(opts.ResultsDir);
 
-pattern = sprintf('stabilityCentralities_*_%s_results.mat', scheme);
-files = dir(fullfile(resultsDir, pattern));
+files = listPerMouseResultFiles(resultsDir, scheme);
 if isempty(files)
     error('compareDstAcrossCohort:NoResults', ...
-        'No files matching %s under %s.', pattern, resultsDir);
+        'No stabilityCentralities_*_%s_results.mat under %s.', scheme, resultsDir);
 end
 
 mice  = strings(0, 1);
@@ -163,5 +162,6 @@ if opts.SaveResults
     save(fullfile(resultsDir, sprintf('D_st_cohort_%s.mat', scheme)), ...
         'summary', 'runParameters');
     fprintf('Wrote %s, %s.{fig,png}, D_st_cohort_%s.mat\n', csvPath, figBase, scheme);
+    close(fig);
 end
 end

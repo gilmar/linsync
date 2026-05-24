@@ -13,7 +13,7 @@ candidates = sort(candidates);
 mice = {};
 for k = 1:numel(candidates)
     csvFile = fullfile(dataRoot, candidates{k}, 'fine_family_labelled_coarse.csv');
-    if exist(csvFile, 'file')
+    if isfile(csvFile)
         mice{end+1, 1} = candidates{k}; %#ok<AGROW>
     else
         warning('listAvailableMice:NoCSV', ...

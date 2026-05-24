@@ -23,7 +23,7 @@ end
 
 names = sort(names);
 summaries = struct('configFile', cell(numel(names), 1), ...
-    'experimentName', '', 'allSucceeded', false);
+    'experimentName', '', 'allSucceeded', false, 'errorMessage', '');
 
 fprintf('\n=== Running %d experiment config(s) from %s ===\n', numel(names), configsDir);
 
@@ -35,6 +35,11 @@ for k = 1:numel(names)
         manifest = runMouseExperiment(propsPath);
         summaries(k).experimentName = manifest.experimentName;
         summaries(k).allSucceeded = manifest.allSucceeded;
+        if ~manifest.allSucceeded
+            failed = manifest.steps(~[manifest.steps.success]);
+            failedMsgs = strcat({failed.name}, ': ', {failed.errorMessage});
+            summaries(k).errorMessage = strjoin(failedMsgs, ' | ');
+        end
     catch ME
         summaries(k).experimentName = '';
         summaries(k).allSucceeded = false;

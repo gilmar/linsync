@@ -9,11 +9,18 @@ function [K, labels, info] = loadMouseConnectome(mouseId)
 %     K      : NxN double, weighted (symmetric) adjacency matrix
 %     labels : Nx1 cell array of region names (e.g. 'L-CORTEX_VISUAL')
 %     info   : struct with mouseId, csvFile, refImage, isTrivial,
-%              symmetryError fields. isTrivial(i) flags rows i whose
-%              entire row + column (excluding diagonal) is zero -- these
-%              are non-physical place-holder rows ('*BACKGROUND',
-%              some '*MASK' rows) that should be excluded from per-node
-%              ranking downstream.
+%              symmetryError fields. isTrivial(i) is true for rows that
+%              are non-physical atlas placeholders and should be
+%              excluded from per-node rankings downstream. A row counts
+%              as trivial if either:
+%                (a) its entire row + column (excluding diagonal) is
+%                    exactly zero, or
+%                (b) its label is a placeholder by convention --
+%                    '*BACKGROUND' or '*_MASK' (e.g. ISOCORTEX_MASK,
+%                    GLOBAL_MASKS). The latter rule catches the MASK
+%                    rows whose connectivity is non-zero but tiny, and
+%                    which the TVB 95th-percentile rescale otherwise
+%                    pushes to the top of the D(->i) ranking.
 
 experimentRoot = fileparts(mfilename('fullpath'));
 csvFile = fullfile(experimentRoot, 'data', mouseId, 'fine_family_labelled_coarse.csv');
@@ -57,9 +64,20 @@ if iscell(rowLabels) || isstring(rowLabels)
     end
 end
 
-% Identify trivial nodes (no incoming AND no outgoing weight, ignoring diagonal)
+% Identify trivial nodes. Two rules combined (logical OR):
+%   (a) connectivity-based: row + column (excluding diagonal) is exactly zero
+%   (b) label-based: row name ends in 'BACKGROUND' or '_MASK' / 'MASKS'
+% The label rule catches atlas placeholders such as ISOCORTEX_MASK and
+% GLOBAL_MASKS that carry tiny non-zero weights but are not physical brain
+% regions; without it, the TVB normalisation amplifies those rows into the
+% top of the D(->i) ranking even though they have no biological meaning.
 Knd = K - diag(diag(K));   % non-diagonal contributions only
-isTrivial = (sum(abs(Knd), 1)' + sum(abs(Knd), 2)) == 0;
+isTrivialByWeight = (sum(abs(Knd), 1)' + sum(abs(Knd), 2)) == 0;
+labelStr = string(labels);
+isTrivialByLabel  = endsWith(labelStr, 'BACKGROUND') | ...
+                    endsWith(labelStr, '_MASK')      | ...
+                    endsWith(labelStr, '_MASKS');
+isTrivial = isTrivialByWeight | isTrivialByLabel(:);
 
 % Symmetry error (structural connectomes should be symmetric up to noise)
 symmetryError = max(abs(K - K'), [], 'all');

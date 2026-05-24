@@ -253,7 +253,8 @@ end
 
 %% Persist
 if opts.SaveResults
-    baseName = sprintf('stabilityCentralities_%s_%s', mouseId, opts.Normalisation);
+    prefix = mouseExperimentResultPrefix();
+    baseName = sprintf('%s_%s_%s', prefix, mouseId, opts.Normalisation);
     save(fullfile(resultsDir, [baseName '_results.mat']), 'results');
     if opts.Plot && ~isempty(fig)
         savefig(fig, fullfile(resultsDir, [baseName '_figure.fig']));
@@ -262,6 +263,7 @@ if opts.SaveResults
         catch
             saveas(fig, fullfile(resultsDir, [baseName '_figure.png']));
         end
+        close(fig);
     end
     if opts.Verbose
         fprintf('Saved results to %s\n', ...

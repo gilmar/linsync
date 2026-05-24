@@ -113,6 +113,7 @@ catch
     saveas(fig, fullfile(resultsDir, [baseName '.png']));
 end
 fprintf('Saved %s\n', fullfile(resultsDir, [baseName '.png']));
+close(fig);
 end
 
 
