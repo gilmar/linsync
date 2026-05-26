@@ -66,6 +66,7 @@ When pipeline flags are `true` (defaults), the orchestrator runs these steps **i
 | Centrality correlations | `compareCentralityMeasures` | `centrality_corr_*` (only if cohort step succeeded) |
 | Anderson vs Arnold | `compareAndersonVsArnold` | `compare_anderson_vs_arnold_*` |
 | Left–right asymmetry | `compareLeftRightAsymmetry` | `compare_LR_asymmetry_*`, `LR_asymmetry_*` |
+| Comparison summary figures (`column` only) | `renderComparisonFigures` | `comparison_figures/region_susc_outliers`, `robust_vs_suggestive_summary`, `laterality_influence_outliers` (`.png`, `.pdf`, `.svg` each) |
 | Network \(D_{\mathrm{st}}\) | `compareDstAcrossCohort` | `D_st_cohort_*` |
 | Console reports | `reportTopNodes`, `reportAndersonOutliers` | `reports_<run>.log` |
 
@@ -88,6 +89,7 @@ For each of the five cohort mice, with `save.results=true` and all pipeline step
 | Centrality comparison | `centrality_corr_<mouse>_<scheme>.{fig,png}` (×5), `centrality_corr_mean_<scheme>.{fig,png}`, `centrality_corr_bars_<scheme>.{fig,png}`, `centrality_corr_<scheme>.mat` |
 | Anderson vs Arnold | One fig/png per **Anderson** mouse (`Anderson_1`, `Anderson_2`) vs Arnold cohort mean±SD; plus `compare_anderson_vs_arnold_<scheme>.mat`, optional `*_outliers.csv` per Anderson mouse |
 | Left–right asymmetry | `compare_LR_asymmetry_<anderson>_<scheme>.{fig,png}`, optional `*_outliers.csv`; `LR_asymmetry_groupTest_<scheme>.{csv,fig,png}`; `LR_asymmetry_systematic_<scheme>.{csv,fig,png}`; `LR_asymmetry_<scheme>.mat` |
+| Comparison summary figures (`column` only) | `comparison_figures/region_susc_outliers`, `robust_vs_suggestive_summary`, `laterality_influence_outliers` (`.png` at 1500×988 px, plus `.pdf`/`.svg`) |
 | Network \(D_{\mathrm{st}}\) | `D_st_cohort_<scheme>.{csv,fig,png,mat}` |
 | QC (optional) | `mouse_heatmaps_overview_reference.{fig,png}` |
 | Provenance | `experiment_<run>.properties`, `experiment_parameters_<run>.{mat,json}`, `run_manifest.mat`, `reports_<run>.log` (`<run>` = results subfolder name) |
@@ -124,6 +126,11 @@ results/initial_column_2026-05-23_1430/
   LR_asymmetry_groupTest_column.{csv,fig,png}
   LR_asymmetry_systematic_column.{csv,fig,png}
   LR_asymmetry_column.mat
+
+  comparison_figures/            # column scheme only
+    region_susc_outliers.{png,pdf,svg}
+    robust_vs_suggestive_summary.{png,pdf,svg}
+    laterality_influence_outliers.{png,pdf,svg}
 
   centrality_corr_<mouse>_column.{fig,png}
   centrality_corr_mean_column.{fig,png}
@@ -268,6 +275,7 @@ Files live in `configs/`. Syntax: `key=value`, `#` comments, one key per line.
 | `compareCentralityMeasures.m` | Correlation heatmaps / bar charts |
 | `compareAndersonVsArnold.m` | Anderson vs Arnold per-node plots + outliers |
 | `compareLeftRightAsymmetry.m` | L–R laterality indices; Anderson vs Arnold per pair + group/systematic views |
+| `renderComparisonFigures.m` | Cohort comparison summary figures; uses in-memory comparison summaries only |
 | `compareDstAcrossCohort.m` | Cohort \(D_{\mathrm{st}}\) table and figure |
 | `reportTopNodes.m` | Print top regions from summary CSV |
 | `reportAndersonOutliers.m` | Print outlier tables from comparison CSVs |
@@ -334,6 +342,24 @@ Metrics: \(D(\to i)\), \(D(k \to)\), and BC (when BCT was used). Three compariso
 
 Full packed results: `LR_asymmetry_<scheme>.mat`. Disable with `pipeline.runLRAsymmetry=false` in the config.
 
+## Comparison summary figures (`column` only)
+
+After `compareAndersonVsArnold` and `compareLeftRightAsymmetry`, `runMouseExperiment` calls `renderComparisonFigures` for the **`column`** scheme. Three summary figures are written under `comparison_figures/` (1500×988 px PNG at 200 dpi, plus PDF/SVG):
+
+| File | Content |
+|------|---------|
+| `region_susc_outliers` | Bonferroni-significant \(D(\to i)\) excess over Arnold mean |
+| `robust_vs_suggestive_summary` | Cohort-robust vs suggestive summary cards |
+| `laterality_influence_outliers` | Significant \(D(k\to)\) L–R pairs (\(\mathrm{LI}_{\mathrm{signed}}\)) |
+
+Data come from the same in-memory quantities as the comparison outlier CSVs (no `readtable` of those files). To regenerate manually:
+
+```matlab
+ava = compareAndersonVsArnold('Normalisation', 'column', 'ResultsDir', resultsDir);
+lr  = compareLeftRightAsymmetry('Normalisation', 'column', 'ResultsDir', resultsDir);
+renderComparisonFigures(ava, lr, 'OutputDir', fullfile(resultsDir, 'comparison_figures'));
+```
+
 Outlier **flagging** uses **Bonferroni correction** at `alpha` from the config (default `0.05`), not a simple \|z\| > `z.threshold`. The `z.threshold` key controls what `reportAndersonOutliers` **displays** in `reports_<run>.log`.
 
 Outputs:
@@ -354,7 +380,9 @@ resultsDir = setupMousePaths('ExperimentName', 'my_manual_run');
 
 compareMouseHeatmap('ResultsDir', resultsDir);
 runAllMiceStabilityCentralities('Normalisation', 'column', 'ResultsDir', resultsDir);
-compareAndersonVsArnold('Normalisation', 'column', 'ResultsDir', resultsDir);
+ava = compareAndersonVsArnold('Normalisation', 'column', 'ResultsDir', resultsDir);
+lr  = compareLeftRightAsymmetry('Normalisation', 'column', 'ResultsDir', resultsDir);
+renderComparisonFigures(ava, lr, 'OutputDir', fullfile(resultsDir, 'comparison_figures'));
 ```
 
 Per-mouse stability-centralities files will contain `results.runParameters` built from that script’s options only (no full experiment config unless you pass `'RunParameters', ...`).

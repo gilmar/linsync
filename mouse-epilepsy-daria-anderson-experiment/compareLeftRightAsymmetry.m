@@ -206,6 +206,7 @@ else
 end
 
 perAnderson = struct();
+outlierTables = struct();
 for a = 1:numel(andersonNames)
     aname = andersonNames{a};
     aIdx = find(strcmp(mice, aname), 1);
@@ -259,6 +260,18 @@ for a = 1:numel(andersonNames)
     devStruct.outlierMask = outlierMaskAll;
     perAnderson.(matlab.lang.makeValidName(aname)) = devStruct;
 
+    outMask = any(outlierMaskAll, 2);
+    outIdx = find(outMask);
+    if ~isempty(outIdx)
+        outlierTables.(matlab.lang.makeValidName(aname)) = buildOutlierTable( ...
+            outIdx, pairLabels, pairLeftIdx, pairRightIdx, ...
+            LI_norm, LI_signed, LI_norm_arnold_mean, LI_norm_arnold_std, ...
+            LI_signed_arnold_mean, LI_signed_arnold_std, ...
+            metricNames, aIdx, zAll, pBonfAll, basis);
+    else
+        outlierTables.(matlab.lang.makeValidName(aname)) = table();
+    end
+
     if opts.SaveResults
         baseName = sprintf('compare_LR_asymmetry_%s_%s', aname, scheme);
         savefig(fig, fullfile(resultsDir, [baseName '.fig']));
@@ -269,13 +282,8 @@ for a = 1:numel(andersonNames)
         end
         close(fig);
 
-        outMask = any(outlierMaskAll, 2);
-        outIdx = find(outMask);
         if ~isempty(outIdx)
-            T = buildOutlierTable(outIdx, pairLabels, pairLeftIdx, pairRightIdx, ...
-                LI_norm, LI_signed, LI_norm_arnold_mean, LI_norm_arnold_std, ...
-                LI_signed_arnold_mean, LI_signed_arnold_std, ...
-                metricNames, aIdx, zAll, pBonfAll, basis);
+            T = outlierTables.(matlab.lang.makeValidName(aname));
             writetable(T, fullfile(resultsDir, [baseName '_outliers.csv']));
             fprintf('  %s: %d outlier pair(s) -> %s_outliers.csv\n', ...
                 aname, numel(outIdx), baseName);
@@ -413,6 +421,7 @@ summary.LI_norm_arnold_std = LI_norm_arnold_std;
 summary.LI_signed_arnold_mean = LI_signed_arnold_mean;
 summary.LI_signed_arnold_std = LI_signed_arnold_std;
 summary.perAnderson = perAnderson;
+summary.outlierTables = outlierTables;
 summary.groupTest = groupTest;
 summary.systematic = systematic;
 summary.zThreshold = opts.ZThreshold;
