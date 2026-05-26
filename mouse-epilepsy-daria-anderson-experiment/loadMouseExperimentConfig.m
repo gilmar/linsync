@@ -54,6 +54,8 @@ cfg.topK       = str2double(getProp(raw, {'top_k'}, '10'));
 cfg.corrType   = getProp(raw, {'corr_type'}, 'Spearman');
 cfg.alpha      = str2double(getProp(raw, {'alpha'}, '0.05'));
 cfg.zThreshold = str2double(getProp(raw, {'z_threshold'}, '2'));
+cfg.lateralityBasis = normalizeLateralityBasis( ...
+    getProp(raw, {'laterality_basis'}, 'signed'));
 
 cfg.pipelineRunHeatmap          = parseBool(getProp(raw, {'pipeline_runHeatmap'}, 'false'));
 cfg.pipelineRunStabilityCentralities = parseBool(getProp(raw, ...
@@ -103,6 +105,19 @@ switch scheme
     otherwise
         error('loadMouseExperimentConfig:BadScheme', ...
             'Unknown normalisation "%s". Use tvb, none, parkes, or column.', scheme);
+end
+end
+
+function basis = normalizeLateralityBasis(basis)
+basis = lower(strtrim(char(basis)));
+switch basis
+    case {'signed', 'raw', 'diff'}
+        basis = 'signed';
+    case {'norm', 'normalised', 'normalized'}
+        basis = 'norm';
+    otherwise
+        error('loadMouseExperimentConfig:BadLateralityBasis', ...
+            'Unknown laterality.basis "%s". Use signed or norm.', basis);
 end
 end
 

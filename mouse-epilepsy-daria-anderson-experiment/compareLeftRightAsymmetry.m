@@ -6,36 +6,57 @@ function summary = compareLeftRightAsymmetry(varargin)
 % D(->i), D(k->), and BC, then contrasts epileptic (Anderson) vs control
 % (Arnold) cohorts in three ways:
 %
-%   1. Per-Anderson mouse: z-score of LI_norm vs Arnold mean+-SD per pair
+%   1. Per-Anderson mouse: z-score of LI_<basis> vs Arnold mean+-SD per
+%      pair, where <basis> is set by 'LateralityBasis' (default 'signed',
+%      i.e. the raw difference L-R; pass 'norm' to use LI_norm instead).
 %   2. Group-level: Welch t-test of LI_norm per region pair x metric
-%   3. Systematic direction: cohort-wide mean LI and sign-rank vs zero
+%      (always on LI_norm, basis-independent).
+%   3. Systematic direction: cohort-wide mean LI_norm and sign-rank vs
+%      zero (always on LI_norm, basis-independent).
 %
 % Reads stabilityCentralities_*_<scheme>_results.mat from results/.
 %
 % Usage:
 %   compareLeftRightAsymmetry;
 %   compareLeftRightAsymmetry('Normalisation', 'column', 'Alpha', 0.05);
+%   compareLeftRightAsymmetry('LateralityBasis', 'norm');
 %
 % Name-value options:
-%   Normalisation : 'column' (default)
-%   ZThreshold    : 2.0   -- display-only (flagging uses Alpha + Bonferroni)
-%   Alpha         : 0.05
-%   SaveResults   : true
-%   ResultsDir    : ''
-%   RunParameters : []
+%   Normalisation   : 'column' (default)
+%   ZThreshold      : 2.0   -- display-only (flagging uses Alpha + Bonferroni)
+%   Alpha           : 0.05
+%   LateralityBasis : 'signed' (default) | 'norm'
+%                     'signed' -> per-Anderson z-score and flagging on
+%                                 LI_signed = L - R (raw difference in
+%                                 metric units). Matches the spec used in
+%                                 the manuscript.
+%                     'norm'   -> per-Anderson z-score and flagging on
+%                                 LI_norm = (L - R)/(L + R).
+%   SaveResults     : true
+%   ResultsDir      : ''
+%   RunParameters   : []
 
 setupMousePaths();
 
 p = inputParser;
-addParameter(p, 'Normalisation', 'column', @(s) ischar(s) || isstring(s));
-addParameter(p, 'ZThreshold',    2.0,  @isscalar);
-addParameter(p, 'Alpha',         0.05, @(x) isscalar(x) && x > 0 && x < 1);
-addParameter(p, 'SaveResults',   true, @islogical);
-addParameter(p, 'ResultsDir',    '',   @(s) ischar(s) || isstring(s));
-addParameter(p, 'RunParameters', [],   @(x) isempty(x) || isstruct(x));
+addParameter(p, 'Normalisation',   'column', @(s) ischar(s) || isstring(s));
+addParameter(p, 'ZThreshold',      2.0,  @isscalar);
+addParameter(p, 'Alpha',           0.05, @(x) isscalar(x) && x > 0 && x < 1);
+addParameter(p, 'LateralityBasis', 'signed', @(s) ischar(s) || isstring(s));
+addParameter(p, 'SaveResults',     true, @islogical);
+addParameter(p, 'ResultsDir',      '',   @(s) ischar(s) || isstring(s));
+addParameter(p, 'RunParameters',   [],   @(x) isempty(x) || isstruct(x));
 parse(p, varargin{:});
 opts = p.Results;
 scheme = char(opts.Normalisation);
+
+basis = lower(strtrim(char(opts.LateralityBasis)));
+if ~any(strcmp(basis, {'norm', 'signed'}))
+    error('compareLeftRightAsymmetry:BadBasis', ...
+        'LateralityBasis must be ''signed'' or ''norm'' (got ''%s'').', basis);
+end
+opts.LateralityBasis = basis;
+useSigned = strcmp(basis, 'signed');
 
 resultsDir = resolveMouseResultsDir(opts.ResultsDir);
 
@@ -161,8 +182,29 @@ fprintf('compareLeftRightAsymmetry: %d Anderson, %d Arnold, %d L-R pairs.\n', ..
     numel(andersonNames), nArnold, nPairs);
 fprintf('  Anderson: %s\n', strjoin(andersonNames, ', '));
 fprintf('  Arnold  : %s\n', strjoin(arnoldNames, ', '));
+fprintf('  Per-Anderson basis: LI_%s.\n', basis);
 
-%% Per-Anderson z-score view
+%% Per-Anderson z-score view (basis = LateralityBasis)
+% LI_table / arnMean_table / arnStd_table point at the LI_norm or
+% LI_signed structs depending on the chosen basis. Group-level Welch and
+% the systematic sign-rank below always run on LI_norm, independent of
+% this branch (see plan: docs/swap-LR-asymmetry-to-LI-signed_*.plan.md).
+if useSigned
+    LI_table       = LI_signed;
+    arnMean_table  = LI_signed_arnold_mean;
+    arnStd_table   = LI_signed_arnold_std;
+    basisTex       = 'LI_{signed}';
+    zeroLineLabel  = 'L - R = 0';
+    clampToUnit    = false;
+else
+    LI_table       = LI_norm;
+    arnMean_table  = LI_norm_arnold_mean;
+    arnStd_table   = LI_norm_arnold_std;
+    basisTex       = 'LI_{norm}';
+    zeroLineLabel  = 'LI_{norm} = 0';
+    clampToUnit    = true;
+end
+
 perAnderson = struct();
 for a = 1:numel(andersonNames)
     aname = andersonNames{a};
@@ -180,8 +222,8 @@ for a = 1:numel(andersonNames)
     zAllVec = [];
     for m = 1:nMetrics
         mn = metricNames{m};
-        aLI = LI_norm.(mn)(:, aIdx);
-        z = safeZ(aLI, LI_norm_arnold_mean.(mn), LI_norm_arnold_std.(mn));
+        aLI = LI_table.(mn)(:, aIdx);
+        z = safeZ(aLI, arnMean_table.(mn), arnStd_table.(mn));
         zAll{m} = z;
         zAllVec = [zAllVec; z(:)]; %#ok<AGROW>
     end
@@ -191,8 +233,8 @@ for a = 1:numel(andersonNames)
 
     for m = 1:nMetrics
         mn = metricNames{m};
-        aLI = LI_norm.(mn)(:, aIdx);
-        arnLI = LI_norm.(mn)(:, isArnold);
+        aLI = LI_table.(mn)(:, aIdx);
+        arnLI = LI_table.(mn)(:, isArnold);
         z = zAll{m};
         p = 2 * (1 - normcdf(abs(z)));
         pBonf = min(1, p * nTests);
@@ -200,16 +242,18 @@ for a = 1:numel(andersonNames)
         outlierMask = ~isnan(pBonf) & pBonf < opts.Alpha;
         outlierMaskAll(:, m) = outlierMask;
         plotLRPanel(nPanels, m, aLI, arnLI, ...
-            LI_norm_arnold_mean.(mn), LI_norm_arnold_std.(mn), z, ...
+            arnMean_table.(mn), arnStd_table.(mn), z, ...
             pairLabels, outlierMask, ...
-            sprintf('LI_{norm} (%s): %s vs Arnold (n=%d)  [Bonf |z|\\geq%.2f]', ...
-                ylabs{m}, strrep(aname, '_', '\_'), nArnold, zThresh_bonf), ...
-            sprintf('LI_{norm} (%s)', ylabs{m}));
+            sprintf('%s (%s): %s vs Arnold (n=%d)  [Bonf |z|\\geq%.2f]', ...
+                basisTex, ylabs{m}, strrep(aname, '_', '\_'), nArnold, zThresh_bonf), ...
+            sprintf('%s (%s)', basisTex, ylabs{m}), ...
+            clampToUnit, zeroLineLabel);
     end
 
-    sgtitle(sprintf('Left-right laterality: %s vs Arnold  --  %s', ...
-        strrep(aname, '_', '\_'), scheme), 'Interpreter', 'tex');
+    sgtitle(sprintf('Left-right laterality: %s vs Arnold  --  %s  (basis=%s)', ...
+        strrep(aname, '_', '\_'), scheme, basis), 'Interpreter', 'tex');
 
+    devStruct.basis = basis;
     devStruct.z = zAll;
     devStruct.p_bonf = pBonfAll;
     devStruct.outlierMask = outlierMaskAll;
@@ -231,7 +275,7 @@ for a = 1:numel(andersonNames)
             T = buildOutlierTable(outIdx, pairLabels, pairLeftIdx, pairRightIdx, ...
                 LI_norm, LI_signed, LI_norm_arnold_mean, LI_norm_arnold_std, ...
                 LI_signed_arnold_mean, LI_signed_arnold_std, ...
-                metricNames, aIdx, zAll, pBonfAll);
+                metricNames, aIdx, zAll, pBonfAll, basis);
             writetable(T, fullfile(resultsDir, [baseName '_outliers.csv']));
             fprintf('  %s: %d outlier pair(s) -> %s_outliers.csv\n', ...
                 aname, numel(outIdx), baseName);
@@ -373,6 +417,7 @@ summary.groupTest = groupTest;
 summary.systematic = systematic;
 summary.zThreshold = opts.ZThreshold;
 summary.alpha = opts.Alpha;
+summary.lateralityBasis = basis;
 
 if isempty(opts.RunParameters)
     summary.runParameters = mouseExperimentRunParameters('buildFromCompareLR', ...
@@ -444,7 +489,22 @@ end
 
 %% ------------------------------------------------------------------
 function T = buildOutlierTable(outIdx, pairLabels, pairLeftIdx, pairRightIdx, ...
-    LI_norm, LI_signed, muN, sdN, muS, sdS, metricNames, aIdx, zAll, pBonfAll)
+    LI_norm, LI_signed, muN, sdN, muS, sdS, metricNames, aIdx, zAll, pBonfAll, ...
+    basis)
+% basis : 'signed' -> z/p_bonf columns named z_signed_<mn> / p_bonf_signed_<mn>
+%         'norm'   -> z/p_bonf columns named z_<mn>        / p_bonf_<mn>
+% LI_norm_* and LI_signed_* raw columns are emitted in both branches.
+if nargin < 15 || isempty(basis)
+    basis = 'norm';
+end
+if strcmp(basis, 'signed')
+    zPrefix     = 'z_signed';
+    pBonfPrefix = 'p_bonf_signed';
+else
+    zPrefix     = 'z';
+    pBonfPrefix = 'p_bonf';
+end
+
 nOut = numel(outIdx);
 nMet = numel(metricNames);
 cols = {'PairIdx', 'Region', 'L_NodeIdx', 'R_NodeIdx'};
@@ -462,13 +522,13 @@ for m = 1:nMet
         sprintf('LI_norm_arnold_std_%s', mn), ...
         sprintf('LI_signed_anderson_%s', mn), sprintf('LI_signed_arnold_mean_%s', mn), ...
         sprintf('LI_signed_arnold_std_%s', mn), ...
-        sprintf('z_%s', mn), sprintf('p_bonf_%s', mn)}]; %#ok<AGROW>
+        sprintf('%s_%s', zPrefix, mn), sprintf('%s_%s', pBonfPrefix, mn)}]; %#ok<AGROW>
 end
 
 T = table(data{:}, 'VariableNames', cols);
 minP = inf(nOut, 1);
 for m = 1:nMet
-    pcol = T.(sprintf('p_bonf_%s', metricNames{m}));
+    pcol = T.(sprintf('%s_%s', pBonfPrefix, metricNames{m}));
     minP = min(minP, pcol, 'omitnan');
 end
 [~, ord] = sort(minP, 'ascend');
@@ -477,7 +537,19 @@ end
 
 %% ------------------------------------------------------------------
 function plotLRPanel(nPanels, panelIdx, anderVals, arnoldVals, ...
-    arnMean, arnStd, zScore, labels, outlierMask, panelTitle, ylab)
+    arnMean, arnStd, zScore, labels, outlierMask, panelTitle, ylab, ...
+    clampToUnit, zeroLineLabel)
+% clampToUnit   : true to clamp the y-axis to [-1.05, 1.05] (only sensible
+%                 for LI_norm, which is bounded). LI_signed is in the
+%                 metric's native units and must not be clamped.
+% zeroLineLabel : DisplayName for the y=0 reference line.
+
+if nargin < 12 || isempty(clampToUnit)
+    clampToUnit = true;
+end
+if nargin < 13 || isempty(zeroLineLabel)
+    zeroLineLabel = 'LI = 0';
+end
 
 ax = subplot(nPanels, 1, panelIdx); hold(ax, 'on');
 nP = numel(anderVals);
@@ -492,12 +564,14 @@ if any(isfinite(anderVals)) || any(isfinite(arnMean))
     end
     pad = 0.05 * max(diff(yl), 0.1);
     yl = yl + [-pad pad];
-    yl(1) = max(yl(1), -1.05);
-    yl(2) = min(yl(2), 1.05);
+    if clampToUnit
+        yl(1) = max(yl(1), -1.05);
+        yl(2) = min(yl(2), 1.05);
+    end
 end
 
 yline(ax, 0, '--', 'Color', [0.5 0.5 0.5], 'LineWidth', 1, ...
-    'DisplayName', 'LI_{norm}=0');
+    'DisplayName', zeroLineLabel);
 
 valid = ~isnan(arnMean) & ~isnan(arnStd);
 if any(valid)

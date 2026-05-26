@@ -225,6 +225,7 @@ Files live in `configs/`. Syntax: `key=value`, `#` comments, one key per line.
 | `corr.type` | `Spearman` | Correlation type in `compareCentralityMeasures` |
 | `alpha` | `0.05` | Family-wise level for Bonferroni outlier flagging in `compareAndersonVsArnold` |
 | `z.threshold` | `2` | Minimum \|z\| shown in `reportAndersonOutliers` |
+| `laterality.basis` | `signed` | Basis for the per-Anderson L–R z-score and Bonferroni flagging in `compareLeftRightAsymmetry`: `signed` uses \(\mathrm{LI}_{\mathrm{signed}} = L - R\) (raw difference, matches the manuscript spec); `norm` uses \(\mathrm{LI}_{\mathrm{norm}} = (L-R)/(L+R)\). Group-level Welch and systematic sign-rank are always on \(\mathrm{LI}_{\mathrm{norm}}\). |
 
 ### Pipeline and output
 
@@ -321,14 +322,14 @@ Placeholder rows (`L-BACKGROUND`, `R-BACKGROUND`, `*_MASK`) are flagged in `info
 
 `compareLeftRightAsymmetry` pairs each `L-<region>` node with `R-<region>` (same suffix) and computes, per mouse and metric:
 
-- **\( \mathrm{LI}_{\mathrm{norm}} = (L - R) / (L + R) \)** — primary laterality index in \([-1, +1]\) (positive ⇒ higher on the L-labelled side)
-- **\( \mathrm{LI}_{\mathrm{signed}} = L - R \)** — signed difference in the metric's units
+- **\( \mathrm{LI}_{\mathrm{norm}} = (L - R) / (L + R) \)** — normalised laterality index in \([-1, +1]\) (positive ⇒ higher on the L-labelled side)
+- **\( \mathrm{LI}_{\mathrm{signed}} = L - R \)** — signed difference in the metric's own units
 
 Metrics: \(D(\to i)\), \(D(k \to)\), and BC (when BCT was used). Three comparison views:
 
-1. **Per Anderson mouse** — z-score of \(\mathrm{LI}_{\mathrm{norm}}\) vs Arnold mean ± SD per region pair; Bonferroni over (pairs × metrics); figures `compare_LR_asymmetry_<mouse>_<scheme>.*`
-2. **Group-level** — Welch t-test per pair × metric; `LR_asymmetry_groupTest_<scheme>.*`
-3. **Systematic direction** — cohort-wide mean \(\mathrm{LI}_{\mathrm{norm}}\) and sign-rank vs zero (answers whether epileptic mice show a consistent L vs R bias); `LR_asymmetry_systematic_<scheme>.*`
+1. **Per Anderson mouse** — z-score of \(\mathrm{LI}_{\langle\mathrm{basis}\rangle}\) vs Arnold mean ± SD per region pair; Bonferroni over (pairs × metrics); figures `compare_LR_asymmetry_<mouse>_<scheme>.*`. The basis is set by `laterality.basis` in the config (default `signed`, i.e. the raw difference \(L - R\); set `laterality.basis = norm` to revert to the bounded index). Outlier-CSV columns adapt to the basis: `z_<metric>` / `p_bonf_<metric>` for `norm`, `z_signed_<metric>` / `p_bonf_signed_<metric>` for `signed`; both `LI_norm_*` and `LI_signed_*` raw values are always emitted.
+2. **Group-level** — Welch t-test of \(\mathrm{LI}_{\mathrm{norm}}\) per pair × metric (basis-independent); `LR_asymmetry_groupTest_<scheme>.*`
+3. **Systematic direction** — cohort-wide mean \(\mathrm{LI}_{\mathrm{norm}}\) and sign-rank vs zero (basis-independent; answers whether epileptic mice show a consistent L vs R bias); `LR_asymmetry_systematic_<scheme>.*`
 
 Full packed results: `LR_asymmetry_<scheme>.mat`. Disable with `pipeline.runLRAsymmetry=false` in the config.
 
