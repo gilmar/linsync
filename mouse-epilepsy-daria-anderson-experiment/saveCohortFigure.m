@@ -1,5 +1,5 @@
 function saveCohortFigure(fig, outDir, baseName)
-%SAVECOHORTFIGURE  Export 1500x988 PNG (200 dpi) plus matching PDF and SVG.
+%SAVECOHORTFIGURE  Export 1500x988 PNG (200 dpi) and MATLAB .fig.
 %
 %   saveCohortFigure(fig, outDir, 'region_susc_outliers')
 
@@ -28,18 +28,11 @@ fig.PaperSize = [wIn hIn];
 fig.PaperPosition = [0 0 wIn hIn];
 fig.PaperPositionMode = 'manual';
 
+figFile = fullfile(outDir, [baseName '.fig']);
 pngFile = fullfile(outDir, [baseName '.png']);
-pdfFile = fullfile(outDir, [baseName '.pdf']);
-svgFile = fullfile(outDir, [baseName '.svg']);
 
 drawnow;
+savefig(fig, figFile);
+drawnow;
 print(fig, pngFile, '-dpng', sprintf('-r%d', dpi), '-painters');
-drawnow;
-exportgraphics(fig, pdfFile, 'ContentType', 'vector');
-drawnow;
-try
-    exportgraphics(fig, svgFile, 'ContentType', 'vector');
-catch
-    print(fig, svgFile, '-dsvg', '-painters');
-end
 end

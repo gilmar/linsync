@@ -56,6 +56,8 @@ cfg.alpha      = str2double(getProp(raw, {'alpha'}, '0.05'));
 cfg.zThreshold = str2double(getProp(raw, {'z_threshold'}, '2'));
 cfg.lateralityBasis = normalizeLateralityBasis( ...
     getProp(raw, {'laterality_basis'}, 'signed'));
+cfg.casePrefix    = getProp(raw, {'cohort_case_prefix', 'case_prefix'}, 'Anderson');
+cfg.controlPrefix = getProp(raw, {'cohort_control_prefix', 'control_prefix'}, 'Arnold');
 
 cfg.pipelineRunHeatmap          = parseBool(getProp(raw, {'pipeline_runHeatmap'}, 'false'));
 cfg.pipelineRunStabilityCentralities = parseBool(getProp(raw, ...

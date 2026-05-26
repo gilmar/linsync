@@ -5,12 +5,15 @@ rows = struct('mouseId', {}, 'region', {}, 'raw', {}, 'arn_mean', {}, ...
     'arn_std', {}, 'z', {});
 
 if isfield(lrSummary, 'outlierTables') && ~isempty(fieldnames(lrSummary.outlierTables))
-    mice = fieldnames(lrSummary.outlierTables);
-    for m = 1:numel(mice)
-        T = lrSummary.outlierTables.(mice{m});
+    tblFields = fieldnames(lrSummary.outlierTables);
+    info = cohortGroupInfo(lrSummary);
+    for m = 1:numel(tblFields)
+        fld = tblFields{m};
+        T = lrSummary.outlierTables.(fld);
         if isempty(T)
             continue;
         end
+        mouseId = resolveMouseIdFromField(fld, info.caseIds);
         pCol = 'p_bonf_signed_D_infl';
         if ~ismember(pCol, T.Properties.VariableNames)
             continue;
@@ -20,7 +23,7 @@ if isfield(lrSummary, 'outlierTables') && ~isempty(fieldnames(lrSummary.outlierT
             if ~sig(r)
                 continue;
             end
-            rows(end+1) = rowFromTable(T, r, mice{m}); %#ok<AGROW>
+            rows(end+1) = rowFromTable(T, r, mouseId); %#ok<AGROW>
         end
     end
     if ~isempty(rows)
@@ -28,7 +31,7 @@ if isfield(lrSummary, 'outlierTables') && ~isempty(fieldnames(lrSummary.outlierT
     end
 end
 
-% Legacy .mat: scan perAnderson z/p on D_infl signed LI
+% Legacy .mat: scan per-case z/p on D_infl signed LI
 if ~isfield(lrSummary, 'perAnderson') || ~isfield(lrSummary, 'LI_signed')
     return;
 end
@@ -36,19 +39,22 @@ mn = 'D_infl';
 if ~isfield(lrSummary.LI_signed, mn)
     return;
 end
+info = cohortGroupInfo(lrSummary);
 mice = lrSummary.mice;
-isAnderson = lrSummary.isAnderson;
-andersonNames = mice(isAnderson);
+caseIds = info.caseIds;
 muS = lrSummary.LI_signed_arnold_mean.(mn);
 sdS = lrSummary.LI_signed_arnold_std.(mn);
 pairLabels = lrSummary.pairLabels;
 metricNames = lrSummary.metricNames;
 mInfl = find(strcmp(metricNames, mn), 1);
 
-for a = 1:numel(andersonNames)
-    aname = andersonNames{a};
+for a = 1:numel(caseIds)
+    aname = caseIds{a};
     fld = matlab.lang.makeValidName(aname);
     aIdx = find(strcmp(mice, aname), 1);
+    if ~isfield(lrSummary.perAnderson, fld)
+        continue;
+    end
     pa = lrSummary.perAnderson.(fld);
     if isempty(mInfl) || numel(pa.p_bonf) < mInfl
         continue;
@@ -66,6 +72,17 @@ for a = 1:numel(andersonNames)
         rows(end).arn_mean = muS(p);
         rows(end).arn_std = sdS(p);
         rows(end).z = z(p);
+    end
+end
+end
+
+%% ------------------------------------------------------------------
+function mouseId = resolveMouseIdFromField(fld, caseIds)
+mouseId = fld;
+for k = 1:numel(caseIds)
+    if strcmp(matlab.lang.makeValidName(caseIds{k}), fld)
+        mouseId = caseIds{k};
+        return;
     end
 end
 end

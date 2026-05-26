@@ -37,6 +37,8 @@ function summary = compareAndersonVsArnold(varargin)
 %                                       Bonferroni correction across all
 %                                       non-trivial nodes x metrics per mouse
 %   SaveResults   : true             -- write figures + CSVs
+%   CasePrefix    : 'Anderson'        -- mouseId prefix for case cohort
+%   ControlPrefix : 'Arnold'         -- mouseId prefix for control cohort
 
 setupMousePaths();
 
@@ -47,9 +49,13 @@ addParameter(p, 'Alpha',         0.05, @(x) isscalar(x) && x > 0 && x < 1);
 addParameter(p, 'SaveResults',   true, @islogical);
 addParameter(p, 'ResultsDir',    '',   @(s) ischar(s) || isstring(s));
 addParameter(p, 'RunParameters', [],   @(x) isempty(x) || isstruct(x));
+addParameter(p, 'CasePrefix',    'Anderson', @(s) ischar(s) || isstring(s));
+addParameter(p, 'ControlPrefix', 'Arnold',   @(s) ischar(s) || isstring(s));
 parse(p, varargin{:});
 opts = p.Results;
 scheme = char(opts.Normalisation);
+casePrefix = char(opts.CasePrefix);
+controlPrefix = char(opts.ControlPrefix);
 
 resultsDir = resolveMouseResultsDir(opts.ResultsDir);
 
@@ -76,16 +82,19 @@ if isempty(mice)
         'Loaded files contained no usable results structs.');
 end
 
-isAnderson = startsWith(string(mice), 'Anderson');
-isArnold   = startsWith(string(mice), 'Arnold');
+[isCase, isControl] = mouseCohortGroupMask(mice, casePrefix, controlPrefix);
+isAnderson = isCase;
+isArnold   = isControl;
 
-if ~any(isAnderson)
-    error('compareAndersonVsArnold:NoAnderson', ...
-        'No Anderson mice found in %s (mice: %s).', resultsDir, strjoin(mice, ', '));
+if ~any(isCase)
+    error('compareAndersonVsArnold:NoCaseMice', ...
+        'No mice with case prefix "%s" found in %s (mice: %s).', ...
+        casePrefix, resultsDir, strjoin(mice, ', '));
 end
-if ~any(isArnold)
-    error('compareAndersonVsArnold:NoArnold', ...
-        'No Arnold mice found in %s (mice: %s).', resultsDir, strjoin(mice, ', '));
+if ~any(isControl)
+    error('compareAndersonVsArnold:NoControlMice', ...
+        'No mice with control prefix "%s" found in %s (mice: %s).', ...
+        controlPrefix, resultsDir, strjoin(mice, ', '));
 end
 
 labels = loaded{1}.labels;
@@ -267,6 +276,10 @@ end
 summary = struct();
 summary.scheme              = scheme;
 summary.mice                = mice;
+summary.casePrefix          = casePrefix;
+summary.controlPrefix       = controlPrefix;
+summary.isCase              = isCase;
+summary.isControl           = isControl;
 summary.isAnderson          = isAnderson;
 summary.isArnold            = isArnold;
 summary.labels              = labels;

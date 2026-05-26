@@ -66,7 +66,7 @@ When pipeline flags are `true` (defaults), the orchestrator runs these steps **i
 | Centrality correlations | `compareCentralityMeasures` | `centrality_corr_*` (only if cohort step succeeded) |
 | Anderson vs Arnold | `compareAndersonVsArnold` | `compare_anderson_vs_arnold_*` |
 | Left–right asymmetry | `compareLeftRightAsymmetry` | `compare_LR_asymmetry_*`, `LR_asymmetry_*` |
-| Comparison summary figures (`column` only) | `renderComparisonFigures` | `comparison_figures/region_susc_outliers`, `robust_vs_suggestive_summary`, `laterality_influence_outliers` (`.png`, `.pdf`, `.svg` each) |
+| Comparison summary figures (`column` only) | `renderComparisonFigures` | `comparison_figures/region_susc_outliers`, `laterality_influence_outliers` (`.fig`, `.png` each) |
 | Network \(D_{\mathrm{st}}\) | `compareDstAcrossCohort` | `D_st_cohort_*` |
 | Console reports | `reportTopNodes`, `reportAndersonOutliers` | `reports_<run>.log` |
 
@@ -89,7 +89,7 @@ For each of the five cohort mice, with `save.results=true` and all pipeline step
 | Centrality comparison | `centrality_corr_<mouse>_<scheme>.{fig,png}` (×5), `centrality_corr_mean_<scheme>.{fig,png}`, `centrality_corr_bars_<scheme>.{fig,png}`, `centrality_corr_<scheme>.mat` |
 | Anderson vs Arnold | One fig/png per **Anderson** mouse (`Anderson_1`, `Anderson_2`) vs Arnold cohort mean±SD; plus `compare_anderson_vs_arnold_<scheme>.mat`, optional `*_outliers.csv` per Anderson mouse |
 | Left–right asymmetry | `compare_LR_asymmetry_<anderson>_<scheme>.{fig,png}`, optional `*_outliers.csv`; `LR_asymmetry_groupTest_<scheme>.{csv,fig,png}`; `LR_asymmetry_systematic_<scheme>.{csv,fig,png}`; `LR_asymmetry_<scheme>.mat` |
-| Comparison summary figures (`column` only) | `comparison_figures/region_susc_outliers`, `robust_vs_suggestive_summary`, `laterality_influence_outliers` (`.png` at 1500×988 px, plus `.pdf`/`.svg`) |
+| Comparison summary figures (`column` only) | `comparison_figures/region_susc_outliers`, `laterality_influence_outliers` (`.fig`, `.png` at 1500×988 px) |
 | Network \(D_{\mathrm{st}}\) | `D_st_cohort_<scheme>.{csv,fig,png,mat}` |
 | QC (optional) | `mouse_heatmaps_overview_reference.{fig,png}` |
 | Provenance | `experiment_<run>.properties`, `experiment_parameters_<run>.{mat,json}`, `run_manifest.mat`, `reports_<run>.log` (`<run>` = results subfolder name) |
@@ -128,9 +128,8 @@ results/initial_column_2026-05-23_1430/
   LR_asymmetry_column.mat
 
   comparison_figures/            # column scheme only
-    region_susc_outliers.{png,pdf,svg}
-    robust_vs_suggestive_summary.{png,pdf,svg}
-    laterality_influence_outliers.{png,pdf,svg}
+    region_susc_outliers.{fig,png}
+    laterality_influence_outliers.{fig,png}
 
   centrality_corr_<mouse>_column.{fig,png}
   centrality_corr_mean_column.{fig,png}
@@ -344,19 +343,31 @@ Full packed results: `LR_asymmetry_<scheme>.mat`. Disable with `pipeline.runLRAs
 
 ## Comparison summary figures (`column` only)
 
-After `compareAndersonVsArnold` and `compareLeftRightAsymmetry`, `runMouseExperiment` calls `renderComparisonFigures` for the **`column`** scheme. Three summary figures are written under `comparison_figures/` (1500×988 px PNG at 200 dpi, plus PDF/SVG):
+After `compareAndersonVsArnold` and `compareLeftRightAsymmetry`, `runMouseExperiment` calls `renderComparisonFigures` for the **`column`** scheme. Two summary figures are written under `comparison_figures/` (`.fig` plus 1500×988 px PNG at 200 dpi):
 
 | File | Content |
 |------|---------|
 | `region_susc_outliers` | Bonferroni-significant \(D(\to i)\) excess over Arnold mean |
-| `robust_vs_suggestive_summary` | Cohort-robust vs suggestive summary cards |
 | `laterality_influence_outliers` | Significant \(D(k\to)\) L–R pairs (\(\mathrm{LI}_{\mathrm{signed}}\)) |
 
-Data come from the same in-memory quantities as the comparison outlier CSVs (no `readtable` of those files). To regenerate manually:
+Data come from the same in-memory quantities as the comparison outlier CSVs (no `readtable` of those files). Titles, legends, and cohort counts are derived from the summary struct (`cohortGroupInfo`), not hard-coded strain names.
+
+For a different cohort, set mouse ID prefixes in the properties file (defaults match the shipped Anderson / Arnold study):
+
+```properties
+cohort.case.prefix=Anderson
+cohort.control.prefix=Arnold
+```
+
+Example for `Case_1`, `Case_2` vs `Ctrl_1`…`Ctrl_4`: use `cohort.case.prefix=Case` and `cohort.control.prefix=Ctrl`.
+
+To regenerate manually:
 
 ```matlab
-ava = compareAndersonVsArnold('Normalisation', 'column', 'ResultsDir', resultsDir);
-lr  = compareLeftRightAsymmetry('Normalisation', 'column', 'ResultsDir', resultsDir);
+ava = compareAndersonVsArnold('Normalisation', 'column', 'ResultsDir', resultsDir, ...
+    'CasePrefix', 'Anderson', 'ControlPrefix', 'Arnold');
+lr  = compareLeftRightAsymmetry('Normalisation', 'column', 'ResultsDir', resultsDir, ...
+    'CasePrefix', 'Anderson', 'ControlPrefix', 'Arnold');
 renderComparisonFigures(ava, lr, 'OutputDir', fullfile(resultsDir, 'comparison_figures'));
 ```
 

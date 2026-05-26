@@ -35,6 +35,8 @@ function summary = compareLeftRightAsymmetry(varargin)
 %   SaveResults     : true
 %   ResultsDir      : ''
 %   RunParameters   : []
+%   CasePrefix      : 'Anderson'
+%   ControlPrefix   : 'Arnold'
 
 setupMousePaths();
 
@@ -46,9 +48,13 @@ addParameter(p, 'LateralityBasis', 'signed', @(s) ischar(s) || isstring(s));
 addParameter(p, 'SaveResults',     true, @islogical);
 addParameter(p, 'ResultsDir',      '',   @(s) ischar(s) || isstring(s));
 addParameter(p, 'RunParameters',   [],   @(x) isempty(x) || isstruct(x));
+addParameter(p, 'CasePrefix',      'Anderson', @(s) ischar(s) || isstring(s));
+addParameter(p, 'ControlPrefix',   'Arnold',   @(s) ischar(s) || isstring(s));
 parse(p, varargin{:});
 opts = p.Results;
 scheme = char(opts.Normalisation);
+casePrefix = char(opts.CasePrefix);
+controlPrefix = char(opts.ControlPrefix);
 
 basis = lower(strtrim(char(opts.LateralityBasis)));
 if ~any(strcmp(basis, {'norm', 'signed'}))
@@ -83,16 +89,19 @@ if isempty(mice)
         'Loaded files contained no usable results structs.');
 end
 
-isAnderson = startsWith(string(mice), 'Anderson');
-isArnold   = startsWith(string(mice), 'Arnold');
+[isCase, isControl] = mouseCohortGroupMask(mice, casePrefix, controlPrefix);
+isAnderson = isCase;
+isArnold   = isControl;
 
-if ~any(isAnderson)
-    error('compareLeftRightAsymmetry:NoAnderson', ...
-        'No Anderson mice found in %s (mice: %s).', resultsDir, strjoin(mice, ', '));
+if ~any(isCase)
+    error('compareLeftRightAsymmetry:NoCaseMice', ...
+        'No mice with case prefix "%s" found in %s (mice: %s).', ...
+        casePrefix, resultsDir, strjoin(mice, ', '));
 end
-if ~any(isArnold)
-    error('compareLeftRightAsymmetry:NoArnold', ...
-        'No Arnold mice found in %s (mice: %s).', resultsDir, strjoin(mice, ', '));
+if ~any(isControl)
+    error('compareLeftRightAsymmetry:NoControlMice', ...
+        'No mice with control prefix "%s" found in %s (mice: %s).', ...
+        controlPrefix, resultsDir, strjoin(mice, ', '));
 end
 
 labels = loaded{1}.labels;
@@ -405,6 +414,10 @@ end
 summary = struct();
 summary.scheme = scheme;
 summary.mice = mice;
+summary.casePrefix = casePrefix;
+summary.controlPrefix = controlPrefix;
+summary.isCase = isCase;
+summary.isControl = isControl;
 summary.isAnderson = isAnderson;
 summary.isArnold = isArnold;
 summary.labels = labels;

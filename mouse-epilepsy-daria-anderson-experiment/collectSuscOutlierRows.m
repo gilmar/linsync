@@ -1,35 +1,35 @@
-function rows = collectSuscOutlierRows(andersonSummary)
-%COLLECTSUSCOUTLIERROWS  Per-Anderson Bonferroni-significant D(->i) outliers as struct rows.
+function rows = collectSuscOutlierRows(caseSummary)
+%COLLECTSUSCOUTLIERROWS  Per-case-mouse Bonferroni-significant D(->i) outliers as struct rows.
 %
-%   rows(k) fields: mouseId, region, baseName, hemi, eff, z, D_and, D_arn_mean
+%   rows(k) fields: mouseId, region, baseName, hemi, eff, z, D_case, D_control_mean
 
-P = struct(); %#ok<NASGU>
-alpha = andersonSummary.alpha;
-labels = andersonSummary.labels;
-andersonNames = andersonSummary.mice(andersonSummary.isAnderson);
-mu = andersonSummary.D_susc_arnold_mean;
-sd = andersonSummary.D_susc_arnold_std; %#ok<ASGLU>
+info = cohortGroupInfo(caseSummary);
+alpha = info.alpha;
+labels = caseSummary.labels;
+caseIds = info.caseIds;
+mu = caseSummary.D_susc_arnold_mean;
+sd = caseSummary.D_susc_arnold_std; %#ok<ASGLU>
 
 rows = struct('mouseId', {}, 'region', {}, 'baseName', {}, 'hemi', {}, ...
-    'eff', {}, 'z', {}, 'D_and', {}, 'D_arn_mean', {});
+    'eff', {}, 'z', {}, 'D_case', {}, 'D_control_mean', {});
 
-for a = 1:numel(andersonNames)
-    aname = andersonNames{a};
+for a = 1:numel(caseIds)
+    aname = caseIds{a};
     fld = matlab.lang.makeValidName(aname);
-    dev = andersonSummary.deviations.(fld);
+    dev = caseSummary.deviations.(fld);
     mask = dev.p_bonf_susc < alpha & ~isnan(dev.p_bonf_susc);
-    if isfield(andersonSummary, 'trivialAcrossArnold')
-        mask = mask & ~andersonSummary.trivialAcrossArnold;
+    if isfield(caseSummary, 'trivialAcrossArnold')
+        mask = mask & ~caseSummary.trivialAcrossArnold;
     end
     idx = find(mask);
     for k = 1:numel(idx)
         i = idx(k);
-        dArn = mu(i);
-        dAnd = dev.D_susc_anderson(i);
-        if isnan(dArn) || dArn == 0
+        dCtrl = mu(i);
+        dCase = dev.D_susc_anderson(i);
+        if isnan(dCtrl) || dCtrl == 0
             eff = NaN;
         else
-            eff = 100 * (dAnd - dArn) / dArn;
+            eff = 100 * (dCase - dCtrl) / dCtrl;
         end
         [baseName, hemi] = stripHemispherePrefix(labels{i});
         rows(end+1).mouseId = aname; %#ok<AGROW>
@@ -38,8 +38,8 @@ for a = 1:numel(andersonNames)
         rows(end).hemi = hemi;
         rows(end).eff = eff;
         rows(end).z = dev.z_susc(i);
-        rows(end).D_and = dAnd;
-        rows(end).D_arn_mean = dArn;
+        rows(end).D_case = dCase;
+        rows(end).D_control_mean = dCtrl;
     end
 end
 end
