@@ -728,8 +728,8 @@ self-describing**. The provenance model has four layers:
 
 | Layer                      | Where it lives                                                                                                                            |
 |----------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
-| Raw config                 | `experiment.properties` (a verbatim copy of the input config, with the actual results folder appended at run start)                       |
-| Structured snapshot        | `experiment_parameters.mat` and `experiment_parameters.json` — the full `runParams` struct (saved at start *and* end of the run)          |
+| Raw config                 | `experiment_<run>.properties` (verbatim config copy; `<run>` = results subfolder name; actual folder appended at run start)               |
+| Structured snapshot        | `experiment_parameters_<run>.{mat,json}` — the full `runParams` struct (saved at start *and* end of the run)                                |
 | Run manifest               | `run_manifest.mat` — `{ manifest, cfg, runParams }` with per-step success/duration/error                                                  |
 | Embedded in result `.mat`  | Every per-mouse / summary / comparison `.mat` file carries a `runParameters` field with the full provenance struct                        |
 
@@ -792,11 +792,11 @@ parameterised by the `<scheme>` (`column`, `parkes`, `tvb`, or `none`).
 
 | File                            | Contents                                              |
 |---------------------------------|-------------------------------------------------------|
-| `experiment.properties`         | Verbatim config + appended actual results folder      |
-| `experiment_parameters.mat`     | `runParams` struct                                    |
-| `experiment_parameters.json`    | `runParams` struct as JSON                            |
-| `run_manifest.mat`              | `{ manifest, cfg, runParams }`                        |
-| `reports.log`                   | `reportTopNodes` + `reportAndersonOutliers` console   |
+| `experiment_<run>.properties`         | Verbatim config + appended actual results folder      |
+| `experiment_parameters_<run>.mat`     | `runParams` struct                                    |
+| `experiment_parameters_<run>.json`    | `runParams` struct as JSON                            |
+| `run_manifest.mat`                    | `{ manifest, cfg, runParams }`                        |
+| `reports_<run>.log`                   | `reportTopNodes` + `reportAndersonOutliers` console   |
 
 ### 12.2 Per-mouse stability centralities (×5–6)
 

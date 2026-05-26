@@ -5,7 +5,8 @@ function manifest = runMouseExperiment(propsFile)
 %
 %   Writes all outputs under results/<experiment.name>_<yyyy-mm-dd_HHMM>/
 %   (config experiment.name + run timestamp) and saves run_manifest.mat,
-%   experiment.properties, and experiment_parameters.{mat,json}.
+%   experiment_<name>.properties, experiment_parameters_<name>.{mat,json},
+%   and reports_<name>.log (name = results subfolder).
 
 if nargin < 1 || isempty(propsFile)
     error('runMouseExperiment:NoFile', ...
@@ -20,8 +21,9 @@ configExperimentName = cfg.experimentName;
 [cfg.experimentName, runStamp] = mouseExperimentFolderName(configExperimentName);
 
 resultsDir = setupMousePaths('ExperimentName', cfg.experimentName);
-copyfile(cfg.propsFile, fullfile(resultsDir, 'experiment.properties'));
-appendExperimentResultsFolderNote(resultsDir, cfg.experimentName, runStamp);
+propsFile = mouseExperimentProvenanceFile(resultsDir, cfg.experimentName, 'properties');
+copyfile(cfg.propsFile, propsFile);
+appendExperimentResultsFolderNote(propsFile, cfg.experimentName, runStamp);
 
 manifest = struct();
 manifest.configExperimentName = configExperimentName;
@@ -148,7 +150,7 @@ end
 
 if cfg.pipelineRunReports
 if cohortReady
-    logFile = fullfile(resultsDir, 'reports.log');
+    logFile = mouseExperimentProvenanceFile(resultsDir, cfg.experimentName, 'reports');
     manifest.steps(end+1) = runPipelineStep(@() runReports(logFile, resultsDir, scheme, cfg, mice), ...
         'reports', cfg.pipelineStopOnError);
 else
@@ -224,9 +226,8 @@ if numel(files) < numel(mice)
 end
 end
 
-function appendExperimentResultsFolderNote(resultsDir, folderName, runStamp)
+function appendExperimentResultsFolderNote(noteFile, folderName, runStamp)
 %APPENDEXPERIMENTRESULTSFOLDERNOTE  Record actual results folder in snapshot.
-noteFile = fullfile(resultsDir, 'experiment.properties');
 fid = fopen(noteFile, 'a');
 if fid < 0
     return;

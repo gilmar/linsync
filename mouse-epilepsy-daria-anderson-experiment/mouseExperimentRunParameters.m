@@ -6,8 +6,8 @@ function varargout = mouseExperimentRunParameters(action, varargin)
 %   runParams = mouseExperimentRunParameters('merge', runParams, patchStruct)
 %   mouseExperimentRunParameters('save', resultsDir, runParams)
 %
-%   Writes experiment_parameters.mat and experiment_parameters.json under
-%   resultsDir. The struct is also stored in run_manifest.mat and embedded
+%   Writes experiment_parameters_<experimentName>.{mat,json} under resultsDir.
+%   The struct is also stored in run_manifest.mat and embedded
 %   in per-mouse / summary / comparison .mat files when passed through the
 %   pipeline.
 
@@ -212,10 +212,15 @@ if nargin < 2
     error('mouseExperimentRunParameters:SaveArgs', 'resultsDir and runParams required.');
 end
 runParams.recordedAt = datestr(now, 'yyyy-mm-dd HH:MM:SS');
-matPath = fullfile(resultsDir, 'experiment_parameters.mat');
+if ~isfield(runParams, 'experimentName') || isempty(runParams.experimentName)
+    error('mouseExperimentRunParameters:NoExperimentName', ...
+        'runParams.experimentName required to name provenance files.');
+end
+expName = char(runParams.experimentName);
+matPath = mouseExperimentProvenanceFile(resultsDir, expName, 'parametersMat');
 save(matPath, 'runParams');
 
-jsonPath = fullfile(resultsDir, 'experiment_parameters.json');
+jsonPath = mouseExperimentProvenanceFile(resultsDir, expName, 'parametersJson');
 try
     jsonText = jsonencode(runParams);
     fid = fopen(jsonPath, 'w');

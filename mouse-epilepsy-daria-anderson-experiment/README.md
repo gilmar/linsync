@@ -67,7 +67,7 @@ When pipeline flags are `true` (defaults), the orchestrator runs these steps **i
 | Anderson vs Arnold | `compareAndersonVsArnold` | `compare_anderson_vs_arnold_*` |
 | Left–right asymmetry | `compareLeftRightAsymmetry` | `compare_LR_asymmetry_*`, `LR_asymmetry_*` |
 | Network \(D_{\mathrm{st}}\) | `compareDstAcrossCohort` | `D_st_cohort_*` |
-| Console reports | `reportTopNodes`, `reportAndersonOutliers` | `reports.log` |
+| Console reports | `reportTopNodes`, `reportAndersonOutliers` | `reports_<run>.log` |
 
 After the per-mouse step, the orchestrator checks that **every** available mouse produced a `stabilityCentralities_*_<scheme>_results.mat` file. If any mouse fails, `runAllMiceStabilityCentralities` errors out (no partial summary), comparison/report steps are **skipped**, and `run_manifest.mat` records which step failed.
 
@@ -90,7 +90,7 @@ For each of the five cohort mice, with `save.results=true` and all pipeline step
 | Left–right asymmetry | `compare_LR_asymmetry_<anderson>_<scheme>.{fig,png}`, optional `*_outliers.csv`; `LR_asymmetry_groupTest_<scheme>.{csv,fig,png}`; `LR_asymmetry_systematic_<scheme>.{csv,fig,png}`; `LR_asymmetry_<scheme>.mat` |
 | Network \(D_{\mathrm{st}}\) | `D_st_cohort_<scheme>.{csv,fig,png,mat}` |
 | QC (optional) | `mouse_heatmaps_overview_reference.{fig,png}` |
-| Provenance | `experiment.properties`, `experiment_parameters.{mat,json}`, `run_manifest.mat`, `reports.log` |
+| Provenance | `experiment_<run>.properties`, `experiment_parameters_<run>.{mat,json}`, `run_manifest.mat`, `reports_<run>.log` (`<run>` = results subfolder name) |
 
 ---
 
@@ -102,11 +102,11 @@ Example after `runMouseExperiment('configs/initial_column.properties')` (if run 
 
 ```
 results/initial_column_2026-05-23_1430/
-  experiment.properties          # exact config copied at run start
-  experiment_parameters.mat      # full parameter snapshot (MATLAB)
-  experiment_parameters.json     # same snapshot (human-readable)
+  experiment_initial_column_2026-05-23_1430.properties
+  experiment_parameters_initial_column_2026-05-23_1430.mat
+  experiment_parameters_initial_column_2026-05-23_1430.json
   run_manifest.mat               # pipeline steps + runParams + cfg
-  reports.log                    # reportTopNodes / reportAndersonOutliers output
+  reports_initial_column_2026-05-23_1430.log
 
   stabilityCentralities_Anderson_1_column_results.mat
   stabilityCentralities_Anderson_1_column_figure.{fig,png}
@@ -146,9 +146,9 @@ Every orchestrated run records **all parameters** used to generate the results, 
 
 | File | Contents |
 |------|----------|
-| `experiment.properties` | Raw Java-style config (`key=value`) as run |
-| `experiment_parameters.mat` | Struct `runParams` — see below |
-| `experiment_parameters.json` | Same struct as JSON (easy diff/review in git or editors) |
+| `experiment_<run>.properties` | Raw Java-style config (`key=value`) as run |
+| `experiment_parameters_<run>.mat` | Struct `runParams` — see below |
+| `experiment_parameters_<run>.json` | Same struct as JSON (easy diff/review in git or editors) |
 | `run_manifest.mat` | `manifest` (step names, success, duration), `cfg` (parsed config), `runParams` (updated with `finishedAt` and `pipelineSteps`) |
 
 `runParams` is built by `mouseExperimentRunParameters.m` and includes:
@@ -163,7 +163,7 @@ Every orchestrated run records **all parameters** used to generate the results, 
 - **`output`:** `saveResults`, `plot`, `verbose`
 - **`config`:** full parsed struct from `loadMouseExperimentConfig`
 
-Parameters are saved **at the start** of the run (`experiment_parameters.*`) and **again at the end** (with `finishedAt` and pipeline step outcomes).
+Parameters are saved **at the start** of the run (`experiment_parameters_<run>.*`) and **again at the end** (with `finishedAt` and pipeline step outcomes).
 
 ### Embedded in each output `.mat`
 
@@ -183,11 +183,11 @@ Manual runs (without the orchestrator) still attach `runParameters` built from e
 **Inspect parameters in MATLAB:**
 
 ```matlab
-load('results/initial_column/experiment_parameters.mat', 'runParams')
+load('results/initial_column_2026-05-23_1430/experiment_parameters_initial_column_2026-05-23_1430.mat', 'runParams')
 disp(runParams.stabilityCentralities)
 disp(runParams.comparison)
 
-% Or open experiment_parameters.json in any text editor
+% Or open experiment_parameters_<run>.json in any text editor
 ```
 
 ---
@@ -237,7 +237,7 @@ Files live in `configs/`. Syntax: `key=value`, `#` comments, one key per line.
 | `pipeline.runAndersonVsArnold` | `true` | Strain comparison figures and outlier CSVs |
 | `pipeline.runLRAsymmetry` | `true` | Left–right laterality (Anderson vs Arnold per pair + group tests) |
 | `pipeline.runDstCohort` | `true` | Network-level \(D_{\mathrm{st}}\) bar chart |
-| `pipeline.runReports` | `true` | `reportTopNodes` + `reportAndersonOutliers` → `reports.log` |
+| `pipeline.runReports` | `true` | `reportTopNodes` + `reportAndersonOutliers` → `reports_<run>.log` |
 | `pipeline.stopOnError` | `false` | If `true`, abort the experiment on first failed step |
 | `save.results` | `true` | Write `.mat` / figures / CSVs |
 | `plot` | `true` | Generate figures during stability-centralities step |
@@ -261,6 +261,7 @@ Files live in `configs/`. Syntax: `key=value`, `#` comments, one key per line.
 | `runAllMiceStabilityCentralities.m` | Loop cohort + cross-mouse summary (`stabilityCentralities_*` filenames) |
 | `mouseExperimentResultPrefix.m` | Returns `stabilityCentralities` (result artefact prefix) |
 | `mouseExperimentFolderName.m` | Build `configName_yyyy-mm-dd_HHMM` results subfolder |
+| `mouseExperimentProvenanceFile.m` | Suffixed provenance paths (`experiment_<run>.properties`, etc.) |
 | `listPerMouseResultFiles.m` | Find per-mouse `*_results.mat` (stabilityCentralities or legacy section45) |
 | `assertMouseExperimentOutputs.m` | Post-run checklist vs reference artefact types |
 | `compareMouseHeatmap.m` | Visual QC vs reference PNGs |
@@ -333,7 +334,7 @@ Metrics: \(D(\to i)\), \(D(k \to)\), and BC (when BCT was used). Three compariso
 
 Full packed results: `LR_asymmetry_<scheme>.mat`. Disable with `pipeline.runLRAsymmetry=false` in the config.
 
-Outlier **flagging** uses **Bonferroni correction** at `alpha` from the config (default `0.05`), not a simple \|z\| > `z.threshold`. The `z.threshold` key controls what `reportAndersonOutliers` **displays** in `reports.log`.
+Outlier **flagging** uses **Bonferroni correction** at `alpha` from the config (default `0.05`), not a simple \|z\| > `z.threshold`. The `z.threshold` key controls what `reportAndersonOutliers` **displays** in `reports_<run>.log`.
 
 Outputs:
 

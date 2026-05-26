@@ -27,7 +27,8 @@ report.required = {};
 report.missing = {};
 report.present = {};
 
-req = expectedOutputPaths(resultsDir, scheme, cfg, mice, prefix);
+expName = cfg.experimentName;
+req = expectedOutputPaths(resultsDir, scheme, cfg, mice, prefix, expName);
 report.required = req;
 
 for k = 1:numel(req)
@@ -54,11 +55,11 @@ end
 end
 
 %% ------------------------------------------------------------------
-function paths = expectedOutputPaths(resultsDir, scheme, cfg, mice, prefix)
+function paths = expectedOutputPaths(resultsDir, scheme, cfg, mice, prefix, expName)
 paths = {};
 
 % Orchestrator provenance (always)
-paths = [paths; provenancePaths(resultsDir)];
+paths = [paths; provenancePaths(resultsDir, expName)];
 
 if cfg.pipelineRunHeatmap
     paths = [paths; { ...
@@ -98,17 +99,17 @@ if cfg.pipelineRunDstCohort
 end
 
 if cfg.pipelineRunReports
-    paths{end+1, 1} = fullfile(resultsDir, 'reports.log');
+    paths{end+1, 1} = mouseExperimentProvenanceFile(resultsDir, expName, 'reports');
 end
 
 paths = paths(:);
 end
 
-function paths = provenancePaths(resultsDir)
+function paths = provenancePaths(resultsDir, expName)
 paths = {
-    fullfile(resultsDir, 'experiment.properties')
-    fullfile(resultsDir, 'experiment_parameters.mat')
-    fullfile(resultsDir, 'experiment_parameters.json')
+    mouseExperimentProvenanceFile(resultsDir, expName, 'properties')
+    mouseExperimentProvenanceFile(resultsDir, expName, 'parametersMat')
+    mouseExperimentProvenanceFile(resultsDir, expName, 'parametersJson')
     fullfile(resultsDir, 'run_manifest.mat')
     };
 end
