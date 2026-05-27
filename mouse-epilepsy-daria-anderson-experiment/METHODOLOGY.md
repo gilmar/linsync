@@ -86,8 +86,37 @@ issued on mismatch.
 
 Each connectome comes from DTI-derived structural tractography that has
 been coarse-grained from the fine atlas into 66 standard brain-atlas
-regions. The matrix is structurally symmetric (\(\lVert K - K^{\top}\rVert_{\max} \sim 5\times 10^{-17}\)
-on every shipped mouse).
+regions. The matrix is structurally symmetric: across the shipped cohort
+\(\lVert K - K^{\top}\rVert_{\max}\) sits in \([1.8, 3.6]\times 10^{-12}\)
+absolute — float-roundoff-level noise from however the upstream pipeline
+emitted the CSV, and \(\sim 10^{-16}\) relative to
+\(\max_{ij} K_{ij} \sim 2\)–\(3\times 10^{4}\).
+
+After the `tvb` normalisation (`normal()`,
+[§6](#6-connectome-normalisation-schemes)) this collapses to
+\(\lVert K_{\text{tvb}} - K_{\text{tvb}}^{\top}\rVert_{\max} \sim 2\times 10^{-16}\)
+on every shipped mouse — machine epsilon at the \(K_{\text{tvb}}\) scale
+\(\max_{ij}K_{\text{tvb},ij} = 1\). That symmetry then propagates through
+the Epileptor coupling and Lyapunov solves to give
+\(\max_{i} |D(\to i) - D(k\to)| \leq 3\times 10^{-14}\) on every shipped
+mouse (cf. [§6.2](#62-the-symmetryasymmetry-tradeoff-and-why-it-matters)).
+The mechanism is *not* active symmetrisation: `normal()` zeroes the
+diagonal, clips at the 95th-percentile threshold \(uu\), and divides by
+\(\max_{ij}\); each step preserves symmetry on a symmetric input but
+does not impose it. The collapse from \(\sim 10^{-12}\) (raw) to
+\(\sim 10^{-16}\) (post-`normal`) is driven by the divide-by-\(\max_{ij}\)
+scaling.
+
+> **Truncation-straddle edge case.** The clip step can in principle
+> assign \(uu\) to \(K_{ij}\) but not to \(K_{ji}\) when one entry of a
+> near-symmetric pair sits just above \(uu\) and the other just below.
+> On the shipped cohort this happens on at most 2 entries (only
+> `Arnold_3`), the introduced asymmetry is bounded by the input's own
+> asymmetry, and the subsequent divide-by-\(\max_{ij}\) keeps the
+> post-`normal` symmetry at machine epsilon. So the machine-precision
+> identity \(D(\to i) \equiv D(k\to)\) is preserved, but the symmetry
+> guarantee is "up to input asymmetry / \(\max_{ij} K_{ij}\)", not
+> "exactly symmetric on the nose".
 
 ### 2.2 Reference cohort
 
@@ -114,7 +143,8 @@ diagonal) and are flagged as **trivial**. Trivial nodes:
   across mice),
 - are **skipped** in the per-node \(x_{0,i}^{c}\) sweep (no Epileptor
   fixed point to solve there),
-- are **greyed out** in comparison plots, and
+- are **omitted** from `compareAndersonVsArnold` figures (x-axis shows
+  connected brain regions only), and
 - are **excluded** from the test family used for Bonferroni correction
   in `compareAndersonVsArnold`.
 
@@ -536,16 +566,17 @@ z-threshold is just a verbosity knob.
 
 ### 8.3 What gets saved
 
-For each Anderson mouse \(a\), one figure with up to three stacked
-panels (one per metric):
+For each Anderson mouse \(a\), one figure per metric (up to three:
+\(D(\to i)\), \(D(k\to)\), BC):
 
 - **shaded band** — Arnold mean ± SD per node
 - **blue line** — Arnold mean
 - **grey dots** — individual Arnold values at each node
 - **red markers** — the Anderson mouse's per-node value
-- **black ring + label** — Bonferroni-flagged outlier nodes, annotated
-  with their region name and z-score
-- **grey vertical bands** — trivial nodes (greyed for context)
+- **black ring + label** — Bonferroni-flagged outlier nodes (z-score
+  above the marker; x-tick label **bold** and coloured red)
+- trivial atlas placeholders (`*BACKGROUND`, `*_MASK`) are not shown on
+  the x-axis
 
 The Bonferroni-flagged nodes are also written to
 `compare_anderson_vs_arnold_<mouseId>_<scheme>_outliers.csv`, sorted by
@@ -768,7 +799,7 @@ to read them.
   partial summary.
 - **Missing BCT.** Classical centralities that depend on BCT
   (`betweenness`, `closeness_in/out`) are returned as `NaN` with a
-  single warning. `compareAndersonVsArnold` silently drops the BC panel.
+  single warning. `compareAndersonVsArnold` silently skips the BC figure.
 - **Linear scheme \(\rho(C) \geq 1\).** `runMouseStabilityCentralities`
   errors with `LinearSchemeUnstable` and a hint to raise `parkes.c`
   (for `parkes`) or lower `col.scale` (for `column`).
@@ -850,7 +881,9 @@ Overview heatmap panel counts:
 
 | File                                                                       | Contents                                                                  |
 |----------------------------------------------------------------------------|---------------------------------------------------------------------------|
-| `compare_anderson_vs_arnold_<andersonMouse>_<scheme>.{fig,png}` (per Anderson) | 3-panel comparison figure                                                 |
+| `compare_anderson_vs_arnold_<andersonMouse>_<scheme>_D_to_i.{fig,png}` (per Anderson) | \(D(\to i)\) vs Arnold cohort mean ± SD                          |
+| `compare_anderson_vs_arnold_<andersonMouse>_<scheme>_D_k_to.{fig,png}` (per Anderson) | \(D(k\to)\) vs Arnold cohort mean ± SD                             |
+| `compare_anderson_vs_arnold_<andersonMouse>_<scheme>_BC.{fig,png}` (per Anderson, when BC present) | BC vs Arnold cohort mean ± SD                         |
 | `compare_anderson_vs_arnold_<andersonMouse>_<scheme>_outliers.csv` (optional) | Bonferroni-flagged outlier rows                                            |
 | `compare_anderson_vs_arnold_<scheme>.mat`                                  | Cohort matrices, mean/SD, per-mouse z/p tables, `runParameters`           |
 

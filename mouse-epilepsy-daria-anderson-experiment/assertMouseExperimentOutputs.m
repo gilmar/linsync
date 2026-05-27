@@ -163,13 +163,28 @@ paths = {};
 if ~cfg.saveResults
     return;
 end
+hasBC = true;
+matPath = fullfile(resultsDir, sprintf('compare_anderson_vs_arnold_%s.mat', scheme));
+if isfile(matPath)
+    s = load(matPath, 'hasBC');
+    if isfield(s, 'hasBC')
+        hasBC = s.hasBC;
+    end
+end
+metricSuffixes = {'D_to_i', 'D_k_to'};
+if hasBC
+    metricSuffixes{end+1} = 'BC';
+end
 andersonMice = mice(startsWith(mice, 'Anderson'));
 for m = 1:numel(andersonMice)
     aname = andersonMice{m};
-    paths = [paths; {
-        fullfile(resultsDir, sprintf('compare_anderson_vs_arnold_%s_%s.fig', aname, scheme))
-        fullfile(resultsDir, sprintf('compare_anderson_vs_arnold_%s_%s.png', aname, scheme))
-        }]; %#ok<AGROW>
+    for s = 1:numel(metricSuffixes)
+        suffix = metricSuffixes{s};
+        paths = [paths; {
+            fullfile(resultsDir, sprintf('compare_anderson_vs_arnold_%s_%s_%s.fig', aname, scheme, suffix))
+            fullfile(resultsDir, sprintf('compare_anderson_vs_arnold_%s_%s_%s.png', aname, scheme, suffix))
+            }]; %#ok<AGROW>
+    end
     % Outlier CSV is written only when outliers exist; do not require.
 end
 paths{end+1, 1} = fullfile(resultsDir, sprintf('compare_anderson_vs_arnold_%s.mat', scheme));

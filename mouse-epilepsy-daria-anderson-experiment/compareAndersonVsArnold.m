@@ -12,7 +12,7 @@ function summary = compareAndersonVsArnold(varargin)
 %
 % Reads the per-mouse results that runAllMiceStabilityCentralities writes under
 % results/ (stabilityCentralities_<mouseId>_<scheme>_results.mat). For each Anderson
-% mouse, produces a 3x1 figure (D(->i), D(k->), BC):
+% mouse, produces one figure per metric (D(->i), D(k->), BC when available):
 %
 %   * shaded band  -- Arnold mean +- SD per node
 %   * blue line    -- Arnold mean
@@ -21,7 +21,9 @@ function summary = compareAndersonVsArnold(varargin)
 %   * black ring + label  -- nodes with |z| >= ZThreshold
 %
 % Outputs (under results/):
-%   compare_anderson_vs_arnold_<mouseId>_<scheme>.{fig,png}
+%   compare_anderson_vs_arnold_<mouseId>_<scheme>_D_to_i.{fig,png}
+%   compare_anderson_vs_arnold_<mouseId>_<scheme>_D_k_to.{fig,png}
+%   compare_anderson_vs_arnold_<mouseId>_<scheme>_BC.{fig,png}  (when BC present)
 %   compare_anderson_vs_arnold_<mouseId>_<scheme>_outliers.csv
 %   compare_anderson_vs_arnold_<scheme>.mat
 %
@@ -125,7 +127,7 @@ hasBC = any(~isnan(BC_arnold(:))) && any(~isnan(BC_anderson(:)));
 if ~hasBC
     warning('compareAndersonVsArnold:NoBC', ...
         ['Betweenness centrality not available on any loaded result ' ...
-         '(centralities.betweenness missing or all-NaN). BC panel will ' ...
+         '(centralities.betweenness missing or all-NaN). BC figure will ' ...
          'be skipped. Re-run runAllMiceStabilityCentralities with BCT on the path.']);
 end
 
@@ -153,9 +155,8 @@ fprintf('compareAndersonVsArnold: %d Anderson mouse(/mice), %d Arnold mouse(/mic
 fprintf('  Anderson: %s\n', strjoin(andersonNames, ', '));
 fprintf('  Arnold  : %s\n', strjoin(arnoldNames,   ', '));
 
-%% One figure per Anderson mouse
+%% One figure per Anderson mouse x metric
 deviations = struct();
-nPanels = 2 + double(hasBC);
 for a = 1:numel(andersonNames)
     aname = andersonNames{a};
     aSusc = D_susc_anderson(:, a);
@@ -187,36 +188,40 @@ for a = 1:numel(andersonNames)
     outlierMaskInfl = ~trivialAcrossArnold & ~isnan(pInfl_bonf) & pInfl_bonf < opts.Alpha;
     outlierMaskBC   = ~trivialAcrossArnold & ~isnan(pBC_bonf)   & pBC_bonf   < opts.Alpha;
 
-    figHeight = 380 * nPanels + 80;
-    fig = figure('Name', sprintf('%s vs Arnold per-node centralities', aname), ...
-                 'Position', [60 60 1700 figHeight]);
+    anameTex = strrep(aname, '_', '\_');
+    panelTitleFmt = '%s: %s vs Arnold mean \\pm SD (n=%d)  [Bonferroni |z|\\geq%.2f, \\alpha=%.3f]';
+    cohortTitle = sprintf('Per-node centralities: %s vs Arnold cohort  --  normalisation = %s', ...
+        anameTex, scheme);
 
-    plotComparisonPanel(nPanels, 1, aSusc, D_susc_arnold, ...
-        D_susc_arnold_mean, D_susc_arnold_std, zSusc, ...
-        labels, trivialAcrossArnold, outlierMaskSusc, ...
-        sprintf('D(\\rightarrow i): %s vs Arnold mean \\pm SD (n=%d)  [Bonferroni |z|\\geq%.2f, \\alpha=%.3f]', ...
-            strrep(aname, '_', '\_'), nArnold, zThresh_bonf, opts.Alpha), ...
-        'D(\rightarrow i)');
-
-    plotComparisonPanel(nPanels, 2, aInfl, D_infl_arnold, ...
-        D_infl_arnold_mean, D_infl_arnold_std, zInfl, ...
-        labels, trivialAcrossArnold, outlierMaskInfl, ...
-        sprintf('D(k \\rightarrow): %s vs Arnold mean \\pm SD (n=%d)  [Bonferroni |z|\\geq%.2f, \\alpha=%.3f]', ...
-            strrep(aname, '_', '\_'), nArnold, zThresh_bonf, opts.Alpha), ...
-        'D(k \rightarrow)');
-
+    metricPanels = { ...
+        struct('suffix', 'D_to_i', 'short', 'D(\rightarrow i)', ...
+            'vals', aSusc, 'arnold', D_susc_arnold, 'mean', D_susc_arnold_mean, ...
+            'std', D_susc_arnold_std, 'z', zSusc, 'outliers', outlierMaskSusc, ...
+            'title', sprintf(panelTitleFmt, 'D(\rightarrow i)', anameTex, nArnold, zThresh_bonf, opts.Alpha)); ...
+        struct('suffix', 'D_k_to', 'short', 'D(k \rightarrow)', ...
+            'vals', aInfl, 'arnold', D_infl_arnold, 'mean', D_infl_arnold_mean, ...
+            'std', D_infl_arnold_std, 'z', zInfl, 'outliers', outlierMaskInfl, ...
+            'title', sprintf(panelTitleFmt, 'D(k \rightarrow)', anameTex, nArnold, zThresh_bonf, opts.Alpha)) ...
+        };
     if hasBC
-        plotComparisonPanel(nPanels, 3, aBC, BC_arnold, ...
-            BC_arnold_mean, BC_arnold_std, zBC, ...
-            labels, trivialAcrossArnold, outlierMaskBC, ...
-            sprintf('BC: %s vs Arnold mean \\pm SD (n=%d)  [Bonferroni |z|\\geq%.2f, \\alpha=%.3f]', ...
-                strrep(aname, '_', '\_'), nArnold, zThresh_bonf, opts.Alpha), ...
-            'BC');
+        metricPanels{end+1} = struct('suffix', 'BC', 'short', 'BC', ...
+            'vals', aBC, 'arnold', BC_arnold, 'mean', BC_arnold_mean, ...
+            'std', BC_arnold_std, 'z', zBC, 'outliers', outlierMaskBC, ...
+            'title', sprintf(panelTitleFmt, 'BC', anameTex, nArnold, zThresh_bonf, opts.Alpha));
     end
 
-    sgtitle(sprintf(['Per-node centralities: %s vs Arnold cohort  --  ' ...
-        'normalisation = %s'], strrep(aname, '_', '\_'), scheme), ...
-        'Interpreter', 'tex');
+    baseName = sprintf('compare_anderson_vs_arnold_%s_%s', aname, scheme);
+    for p = 1:numel(metricPanels)
+        mp = metricPanels{p};
+        fig = plotComparisonFigure(mp.vals, mp.arnold, mp.mean, mp.std, mp.z, ...
+            labels, trivialAcrossArnold, mp.outliers, mp.title, mp.short, cohortTitle, ...
+            sprintf('%s vs Arnold — %s', aname, mp.short));
+        if opts.SaveResults
+            saveComparisonFigure(fig, resultsDir, sprintf('%s_%s', baseName, mp.suffix));
+        else
+            close(fig);
+        end
+    end
 
     devStruct = struct( ...
         'D_susc_anderson', aSusc,      'D_infl_anderson', aInfl, ...
@@ -229,15 +234,6 @@ for a = 1:numel(andersonNames)
     deviations.(matlab.lang.makeValidName(aname)) = devStruct;
 
     if opts.SaveResults
-        baseName = sprintf('compare_anderson_vs_arnold_%s_%s', aname, scheme);
-        savefig(fig, fullfile(resultsDir, [baseName '.fig']));
-        try
-            exportgraphics(fig, fullfile(resultsDir, [baseName '.png']), 'Resolution', 200);
-        catch
-            saveas(fig, fullfile(resultsDir, [baseName '.png']));
-        end
-        close(fig);
-
         outMask = outlierMaskSusc | outlierMaskInfl | outlierMaskBC;
         outIdx = find(outMask);
         if ~isempty(outIdx)
@@ -362,31 +358,46 @@ z(ok) = (x(ok) - mu(ok)) ./ sigma(ok);
 end
 
 %% ------------------------------------------------------------------
-function plotComparisonPanel(nPanels, panelIdx, anderVals, arnoldVals, ...
-    arnMean, arnStd, zScore, labels, trivial, outlierMask, panelTitle, ylab)
-%PLOTCOMPARISONPANEL Render one centrality comparison panel into the
-% panelIdx-th subplot of an nPanels-by-1 layout.
+function fig = plotComparisonFigure(anderVals, arnoldVals, ...
+    arnMean, arnStd, zScore, labels, trivial, outlierMask, panelTitle, ylab, ...
+    sgTitleText, figName)
+%PLOTCOMPARISONFIGURE Render one centrality comparison figure.
 % outlierMask: logical N-vector, pre-computed from Bonferroni correction.
+% Atlas placeholders (BACKGROUND, *_MASK) flagged in trivial are omitted
+% from the x-axis; they are already excluded from Bonferroni testing.
+% Outliers are marked on the x-axis (bold, coloured tick labels) and with
+% horizontal z-score labels above the Anderson marker.
 
-ax = subplot(nPanels, 1, panelIdx); hold(ax, 'on');
+plotMask = ~trivial(:);
+if any(plotMask)
+    anderVals   = anderVals(plotMask);
+    arnoldVals  = arnoldVals(plotMask, :);
+    arnMean     = arnMean(plotMask);
+    arnStd      = arnStd(plotMask);
+    zScore      = zScore(plotMask);
+    outlierMask = outlierMask(plotMask);
+    labels = labels(plotMask);
+end
+
+figW = max(1600, min(2200, 1100 + 14 * numel(anderVals)));
+figH = max(640, min(920, 500 + 5 * numel(anderVals)));
+fig = figure('Name', figName, 'Position', [60 60 figW figH], 'Color', 'w');
+ax = axes(fig); hold(ax, 'on');
 N = numel(anderVals);
 x = 1:N;
 
-% Greyed background bands for trivial nodes
-trivialIdx = find(trivial);
 yl = [min([anderVals; arnMean - arnStd; arnoldVals(:)], [], 'omitnan') ...
       max([anderVals; arnMean + arnStd; arnoldVals(:)], [], 'omitnan')];
 if ~all(isfinite(yl))
     yl = [0 1];
 end
-yl = yl + [-1 1] * 0.05 * max(diff(yl), eps);
-for k = 1:numel(trivialIdx)
-    patch(ax, trivialIdx(k) + 0.5 * [-1 1 1 -1], yl([1 1 2 2]), ...
-        [0.94 0.94 0.94], 'EdgeColor', 'none', 'HandleVisibility', 'off');
-end
+ySpan = max(diff(yl), eps);
+ylPad = 0.06 * ySpan;
+yl = yl + [-1 1] * ylPad;
+zHeadroom = 0.12 * ySpan;
 
-% Arnold mean +- SD shaded band (only over connected nodes for clarity)
-valid = ~isnan(arnMean) & ~isnan(arnStd) & ~trivial;
+% Arnold mean +- SD shaded band
+valid = ~isnan(arnMean) & ~isnan(arnStd);
 if any(valid)
     xv = x(valid);
     yLo = (arnMean - arnStd); yLo = yLo(valid);
@@ -411,28 +422,233 @@ plot(ax, x, anderVals, 'o', 'Color', [0.65 0.10 0.10], ...
     'MarkerFaceColor', [0.85 0.33 0.10], 'MarkerSize', 5, ...
     'DisplayName', 'Anderson');
 
-% Highlight Bonferroni-significant outliers
-outlierIdx = find(outlierMask & ~trivial & ~isnan(zScore));
+outlierIdx = find(outlierMask & ~isnan(zScore));
+if ~isempty(outlierIdx)
+    peakY = max([anderVals(outlierIdx); ...
+        arnMean(outlierIdx) + arnStd(outlierIdx)], [], 'omitnan');
+    yl(2) = max(yl(2), peakY + zHeadroom);
+end
+xlim(ax, [0.5 N + 0.5]);
+ylim(ax, yl);
+
+zLabelDy = 0.025 * ySpan;
 if ~isempty(outlierIdx)
     plot(ax, x(outlierIdx), anderVals(outlierIdx), 'o', ...
         'Color', 'k', 'MarkerSize', 10, 'LineWidth', 1.5, ...
         'HandleVisibility', 'off');
     for k = 1:numel(outlierIdx)
         i = outlierIdx(k);
-        text(ax, i, anderVals(i), ...
-            sprintf('  %s (z=%+.1f)', labels{i}, zScore(i)), ...
-            'Interpreter', 'none', 'FontSize', 7, 'Rotation', 25, ...
-            'VerticalAlignment', 'bottom');
+        yi = anderVals(i);
+        if ~isfinite(yi)
+            continue;
+        end
+        text(ax, i, yi + zLabelDy, sprintf('z=%+.1f', zScore(i)), ...
+            'HorizontalAlignment', 'center', ...
+            'VerticalAlignment', 'bottom', ...
+            'Rotation', 0, ...
+            'FontSize', 8, 'Color', [0.15 0.15 0.15], ...
+            'Interpreter', 'none', 'Clipping', 'on');
     end
 end
 
-xlim(ax, [0.5 N + 0.5]);
-ylim(ax, yl);
-set(ax, 'XTick', 1:N, 'XTickLabel', labels, ...
-    'TickLabelInterpreter', 'none', 'FontSize', 6);
-xtickangle(ax, 45);
+tickStyle = styleComparisonXAxis(ax, labels, outlierIdx);
 grid(ax, 'on'); box(ax, 'on');
-ylabel(ax, ylab, 'Interpreter', 'tex');
-title(ax, panelTitle, 'Interpreter', 'tex');
-legend(ax, 'Location', 'best');
+ylabel(ax, ylab, 'Interpreter', 'tex', 'FontSize', 10);
+title(ax, panelTitle, 'Interpreter', 'tex', 'FontSize', 10);
+lg = legend(ax, 'Location', 'northeastoutside', 'FontSize', 8, 'Box', 'off');
+sg = sgtitle(fig, sgTitleText, 'Interpreter', 'tex', 'FontSize', 11);
+layoutComparisonAxes(fig, ax, N, lg, sg, tickStyle);
+finalizeComparisonXLabel(fig, ax);
+end
+
+%% ------------------------------------------------------------------
+function tickStyle = styleComparisonXAxis(ax, labels, outlierIdx)
+%STYLECOMPARISONXAXIS  Region names on x-axis; highlight outlier ticks.
+% Uses hand-placed text labels so FontWeight/Color work on all MATLAB versions.
+% Returns tickStyle for layout and x-axis title placement.
+N = numel(labels);
+tickLabs = cell(N, 1);
+for i = 1:N
+    tickLabs{i} = labelToChar(labels, i);
+end
+outlierMask = false(N, 1);
+outlierMask(outlierIdx) = true;
+
+if N > 40
+    tickAngle = 90;
+    tickFont = 6;
+else
+    tickAngle = 45;
+    tickFont = 7;
+end
+
+highlightColor = [0.78 0.10 0.05];
+normalColor    = [0.32 0.32 0.32];
+yl = ax.YLim;
+
+xticks(ax, 1:N);
+xticklabels(ax, repmat({''}, N, 1));
+ax.TickLabelInterpreter = 'none';
+if isprop(ax, 'XAxis')
+    ax.XAxis.TickLabelGapMultiplier = 1.8;
+end
+
+for i = 1:N
+    if outlierMask(i)
+        fw = 'bold';
+        fc = highlightColor;
+    else
+        fw = 'normal';
+        fc = normalColor;
+    end
+    text(ax, i, yl(1), tickLabs{i}, ...
+        'Rotation', tickAngle, ...
+        'HorizontalAlignment', 'right', ...
+        'VerticalAlignment', 'top', ...
+        'FontSize', tickFont, ...
+        'FontWeight', fw, ...
+        'Color', fc, ...
+        'Interpreter', 'none', ...
+        'Clipping', 'off', ...
+        'Tag', 'comparisonXTickLabel');
+end
+
+tickStyle = struct('tickAngle', tickAngle, 'tickFont', tickFont, 'nRegions', N);
+end
+
+%% ------------------------------------------------------------------
+function s = labelToChar(labels, idx)
+%LABELTOCHAR  Extract one region label as char (cell / string / char vector).
+if iscell(labels)
+    s = char(labels{idx});
+elseif isstring(labels)
+    s = char(labels(idx));
+else
+    s = char(labels(idx));
+end
+end
+
+%% ------------------------------------------------------------------
+function layoutComparisonAxes(fig, ax, nRegions, legendObj, sgTitleObj, tickStyle)
+%LAYOUTCOMPARISONAXES  Resize axes so tick labels, titles, and legend clear the data.
+if nargin < 4
+    legendObj = [];
+end
+if nargin < 5
+    sgTitleObj = [];
+end
+if nargin < 6
+    tickStyle = struct('tickAngle', 90, 'nRegions', nRegions);
+end
+drawnow;
+ax.Units = 'normalized';
+ti = ax.TightInset;
+left   = max(ti(1), 0.08);
+bottom = max(ti(2), min(0.42, 0.14 + 0.004 * nRegions));
+if tickStyle.tickAngle == 90
+    customPad = min(0.16, 0.04 + 0.0020 * tickStyle.nRegions);
+else
+    customPad = min(0.12, 0.03 + 0.0014 * tickStyle.nRegions);
+end
+bottom = max(bottom, ti(2) + customPad + 0.038);  % custom ticks + "Region" caption
+top    = max(ti(4), 0.10);
+if ~isempty(sgTitleObj) && isgraphics(sgTitleObj)
+    top = top + 0.05;
+end
+right = max(ti(3), 0.06);
+if ~isempty(legendObj) && isgraphics(legendObj)
+    legendObj.Location = 'northeastoutside';
+    drawnow;
+    ti = ax.TightInset;
+    right = max(right, ti(3) + 0.12);
+end
+w = max(0.45, 1 - left - right);
+h = max(0.30, 1 - bottom - top);
+ax.Position = [left, bottom, w, h];
+drawnow;
+end
+
+%% ------------------------------------------------------------------
+function finalizeComparisonXLabel(fig, ax)
+%FINALIZECOMPARISONXLABEL  Place "Region" below custom tick labels (figure coords).
+% Axes xlabel overlaps hand-drawn tick text; measure label extent and use a
+% figure-level textbox centred under the lowest tick label.
+drawnow;
+fig.Units = 'normalized';
+ax.Units = 'normalized';
+
+if isprop(ax, 'XLabel')
+    ax.XLabel.String = '';
+end
+delete(findobj(fig, 'Tag', 'comparisonXLabel'));
+
+gap = 0.016;
+labelH = 0.026;
+minYFloor = 0.012;
+minTickY = lowestComparisonTickLabelY(fig, ax);
+yPos = minTickY - gap - labelH;
+
+if yPos < minYFloor
+    shift = minYFloor - yPos;
+    pos = ax.Position;
+    ax.Position = [pos(1), pos(2) + shift, pos(3), max(pos(4) - 0.5 * shift, 0.28)];
+    drawnow;
+    minTickY = lowestComparisonTickLabelY(fig, ax);
+    yPos = max(minYFloor, minTickY - gap - labelH);
+end
+
+ap = ax.Position;
+annotation(fig, 'textbox', [ap(1), yPos, ap(3), labelH], ...
+    'String', 'Region', ...
+    'EdgeColor', 'none', ...
+    'HorizontalAlignment', 'center', ...
+    'VerticalAlignment', 'middle', ...
+    'FontSize', 10, ...
+    'Interpreter', 'none', ...
+    'Tag', 'comparisonXLabel');
+end
+
+%% ------------------------------------------------------------------
+function yMin = lowestComparisonTickLabelY(fig, ax)
+%LOWESTCOMPARISONTICKLABELY  Lowest figure-normalized Y of custom tick labels.
+yMin = ax.Position(2);
+ht = findobj(ax, 'Tag', 'comparisonXTickLabel', 'Type', 'text');
+if isempty(ht)
+    return;
+end
+fig.Units = 'normalized';
+ax.Units = 'normalized';
+ap = ax.Position;
+yLim = ax.YLim;
+ySpan = diff(yLim);
+if ySpan <= 0
+    return;
+end
+for k = 1:numel(ht)
+    ext = ht(k).Extent;
+    cornersY = [ext(2), ext(2) + ext(4)];
+    for yd = cornersY
+        yNorm = (yd - yLim(1)) / ySpan;
+        yFig = ap(2) + yNorm * ap(4);
+        yMin = min(yMin, yFig);
+    end
+end
+end
+
+%% ------------------------------------------------------------------
+function saveComparisonFigure(fig, resultsDir, baseName)
+%SAVECOMPARISONFIGURE Write .fig and .png for one comparison figure.
+pngPath = fullfile(resultsDir, [baseName '.png']);
+savefig(fig, fullfile(resultsDir, [baseName '.fig']));
+try
+    exportgraphics(fig, pngPath, 'Resolution', 200, 'BackgroundColor', 'white');
+catch
+    try
+        exportgraphics(fig, pngPath, 'Resolution', 200, ...
+            'BackgroundColor', 'white', 'Padding', 12);
+    catch
+        saveas(fig, pngPath);
+    end
+end
+close(fig);
 end

@@ -87,7 +87,7 @@ For each of the five cohort mice, with `save.results=true` and all pipeline step
 | Per mouse (×5) | `<prefix>_<mouse>_<scheme>_results.mat`, `_figure.{fig,png}` |
 | Cohort summary | `<prefix>_summary_topnodes_<scheme>.csv`, `_summary_overview_<scheme>.{fig,png}`, `_summary_<scheme>.mat` |
 | Centrality comparison | `centrality_corr_<mouse>_<scheme>.{fig,png}` (×5), `centrality_corr_mean_<scheme>.{fig,png}`, `centrality_corr_bars_<scheme>.{fig,png}`, `centrality_corr_<scheme>.mat` |
-| Anderson vs Arnold | One fig/png per **Anderson** mouse (`Anderson_1`, `Anderson_2`) vs Arnold cohort mean±SD; plus `compare_anderson_vs_arnold_<scheme>.mat`, optional `*_outliers.csv` per Anderson mouse |
+| Anderson vs Arnold | Three fig/png per **Anderson** mouse (`Anderson_1`, `Anderson_2`): `*_D_to_i`, `*_D_k_to`, `*_BC` (BC when BCT available) vs Arnold cohort mean±SD; plus `compare_anderson_vs_arnold_<scheme>.mat`, optional `*_outliers.csv` per Anderson mouse |
 | Left–right asymmetry | `compare_LR_asymmetry_<anderson>_<scheme>.{fig,png}`, optional `*_outliers.csv`; `LR_asymmetry_groupTest_<scheme>.{csv,fig,png}`; `LR_asymmetry_systematic_<scheme>.{csv,fig,png}`; `LR_asymmetry_<scheme>.mat` |
 | Comparison summary figures (`column` only) | `comparison_figures/region_susc_outliers`, `laterality_influence_outliers` (`.fig`, `.png` at 1500×988 px) |
 | Network \(D_{\mathrm{st}}\) | `D_st_cohort_<scheme>.{csv,fig,png,mat}` |
@@ -117,7 +117,9 @@ results/initial_column_2026-05-23_1430/
   stabilityCentralities_summary_overview_column.{fig,png}
   stabilityCentralities_summary_column.mat
 
-  compare_anderson_vs_arnold_Anderson_*_column.{fig,png}
+  compare_anderson_vs_arnold_Anderson_*_column_D_to_i.{fig,png}
+  compare_anderson_vs_arnold_Anderson_*_column_D_k_to.{fig,png}
+  compare_anderson_vs_arnold_Anderson_*_column_BC.{fig,png}
   compare_anderson_vs_arnold_Anderson_*_column_outliers.csv
   compare_anderson_vs_arnold_column.mat
 
@@ -324,7 +326,7 @@ Placeholder rows (`L-BACKGROUND`, `R-BACKGROUND`, `*_MASK`) are flagged in `info
 
 ## Anderson vs Arnold comparison
 
-`compareAndersonVsArnold` loads per-mouse `stabilityCentralities_*_results.mat` and, for each Anderson mouse, plots **three panels**: \(D(\to i)\), \(D(k \to)\), and betweenness centrality vs the Arnold cohort mean ± SD.
+`compareAndersonVsArnold` loads per-mouse `stabilityCentralities_*_results.mat` and, for each Anderson mouse, writes **three separate figures** (one per metric): \(D(\to i)\), \(D(k \to)\), and betweenness centrality vs the Arnold cohort mean ± SD.
 
 ## Left–right hemisphere asymmetry
 
@@ -375,7 +377,9 @@ Outlier **flagging** uses **Bonferroni correction** at `alpha` from the config (
 
 Outputs:
 
-- `compare_anderson_vs_arnold_<mouseId>_<scheme>.{fig,png}`
+- `compare_anderson_vs_arnold_<mouseId>_<scheme>_D_to_i.{fig,png}`
+- `compare_anderson_vs_arnold_<mouseId>_<scheme>_D_k_to.{fig,png}`
+- `compare_anderson_vs_arnold_<mouseId>_<scheme>_BC.{fig,png}` (when BC is available)
 - `compare_anderson_vs_arnold_<mouseId>_<scheme>_outliers.csv`
 - `compare_anderson_vs_arnold_<scheme>.mat` (includes `runParameters`)
 
