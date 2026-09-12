@@ -58,6 +58,12 @@ Finally, with the results generated you can:
 
 5. [plot the results](#15-making-plots-from-results-files) from these runs.
 
+Separately from $\left\langle \sigma^2 \right\rangle$, the toolkit also measures how far a network is from **stability**:
+
+6. [Computing the deviation from stability](#16-deviation-from-stability-d_st) $D_{\mathrm{st}}$ and the per-node stability centralities, and
+
+7. [Running connectome cohort experiments](#17-connectome-cohort-experiments) that apply those measures to empirical brain networks.
+
 ## 1.1 Generating network structure
 
 In order to compute $\left\langle \sigma^2 \right\rangle$ for a network, we need a directed weighted connectivity matrix $C$ for it.
@@ -177,6 +183,86 @@ wish to plot for (specified by `parameters.SRangeToPlot`).
 We show how to generate such batch results on a cluster recreating the Figure 1 and 4 plots
 from the 2023 paper in [cluster](/cluster).
 
+## 1.6 Deviation from stability (D_st)
+
+Alongside the deviation from synchronization $\left\langle \sigma^2 \right\rangle$ (the *projected* covariance $U \Omega U$),
+the toolkit computes the **deviation from stability** from the *full* stationary covariance $\Omega$:
+
+$$D_{\mathrm{st}} = \frac{1}{N} \mathrm{trace}(\Omega).$$
+
+Where $\left\langle \sigma^2 \right\rangle$ asks how far the nodes drift apart from each other,
+$D_{\mathrm{st}}$ asks how strongly the network as a whole amplifies noise before returning to its
+operating point. Two networks with the same spectral radius $\rho(C)$ can have very different
+$D_{\mathrm{st}}$, because the trace integrates over the whole spectrum rather than the leading mode alone.
+
+`covariancesGaussianNet.m` returns $\Omega$ for a given coupling matrix $C$, in continuous time
+(Ornstein-Uhlenbeck) or discrete time (VAR):
+
+```matlab
+[lambdas, Omega, ~, err] = covariancesGaussianNet(C, false, 1e8, false, 1);
+D_st = trace(Omega) / size(C, 1);
+```
+
+`computeStabilityCentralities.m` wraps that up and adds the two **per-node** stability centralities,
+computed from the diagonals of $\Omega$ for $C$ and for $C^{\top}$:
+
+$$D(\to i) = \Omega_{ii} \quad \text{(susceptibility)}, \qquad D(k \to) = \left(\Omega_{C^{\top}}\right)_{kk} \quad \text{(influence)}.$$
+
+```matlab
+stab = computeStabilityCentralities(C, 1e8);
+stab.D_susceptibility   % N x 1 -- variance the network deposits INTO each node
+stab.D_influence        % N x 1 -- variance each node radiates OUT through the network
+stab.D_st_healthy       % scalar D_st
+```
+
+$D(\to i)$ is large for a node that sits downstream of much of the network; $D(k \to)$ is large for a
+node that sits upstream of it. For symmetric $C$ the two coincide.
+
+Both require $\rho(C) < 1$, i.e. a stable network, for the covariance to exist.
+
+## 1.7 Connectome cohort experiments
+
+Building on $D_{\mathrm{st}}$, the toolkit ships a configuration-driven pipeline for applying these
+measures to **empirical brain connectomes across a cohort** of subjects split into a case group and a
+control group. It covers the whole path from connectome files to figures, statistics and a provenance
+record:
+
+* load and normalise each subject's weighted connectome (`column`, `parkes`, `tvb` or raw),
+* form the coupling matrix $C$ — either directly, or by linearising a 1-D Epileptor neural-mass model
+  around its healthy fixed point,
+* compute $D(\to i)$, $D(k \to)$, $D_{\mathrm{st}}$ and the classical graph centralities,
+* for the Epileptor schemes, sweep each node's **critical excitability** $x^c_{0,i}$ — how far that one
+  node's excitability must rise before the whole network loses linear stability,
+* compare case against control per node (Bonferroni-corrected), test left-right asymmetry, and compare
+  $D_{\mathrm{st}}$ between the groups.
+
+A complete runnable example on synthetic data — no real subject data required — is in
+[connectome-demo](/connectome-demo):
+
+```matlab
+cd connectome-demo
+setupConnectomePaths();
+makeSyntheticCohort('data');                           % 2 case + 4 control subjects
+runConnectomeExperiment('configs/demo.properties');    % the whole pipeline
+```
+
+For your own study, lay out one folder per subject under `data/`, create a config from the annotated
+template, and run it:
+
+```matlab
+newConnectomeExperiment('Name', 'pilot', 'Normalisation', 'column');
+runConnectomeExperiment('configs/pilot.properties');
+```
+
+The methods — model, normalisation choices, statistics and their limitations — are documented in
+[docs/connectome-stability.md](docs/connectome-stability.md), and every configuration key in
+[configs/experiment.template.properties](configs/experiment.template.properties).
+
+The Epileptor schemes require the **Optimization Toolbox** (`fsolve`). Betweenness and closeness
+centralities require the **Brain Connectivity Toolbox** (see [docs/BCT.md](docs/BCT.md)); without it
+everything else still runs and those measures come back as `NaN`. Nothing in the pipeline requires the
+Statistics and Machine Learning Toolbox.
+
 # 2. Recreating the results from our papers
 
 * For Lizier et al., "Analytic relationship of relative synchronizability to
@@ -197,6 +283,27 @@ Plotting scripts once results are ready:
 User-level scripts for analytical computation of projected covariance matrices and $\left\langle \sigma^2 \right\rangle$: 
 * `covarianceUGaussianNet.m` - computes the projected covariance matrix ($\Omega_U$) and eigenvalues of a given connectivity matrix $C$.
 * `synchronizability.m` - computes $\left\langle \sigma^2 \right\rangle$ from the output ($\Omega_U$)  of `covarianceUGaussianNet.m`.
+
+User-level scripts for the full covariance matrix and deviation from stability $D_{\mathrm{st}}$ (see [Section 1.6](#16-deviation-from-stability-d_st)):
+* `covariancesGaussianNet.m` - computes the full stationary covariance matrix ($\Omega$) and eigenvalues of a given connectivity matrix $C$, in continuous or discrete time.
+* `computeStabilityCentralities.m` - computes the per-node stability centralities $D(\to i)$, $D(k \to)$ and the scalar $D_{\mathrm{st}}$ from $\Omega$.
+* `con2cov.m` *, `discreteCon2Cov.m` * - underlying power-series computation of $\Omega$ for the continuous- and discrete-time cases.
+* `embedNetworkWithDelays.m`, `checkNonConvergentNetwork.m` - delay embedding, and diagnostics when the power series does not converge.
+
+Connectome cohort pipeline (see [Section 1.7](#17-connectome-cohort-experiments) and [docs/connectome-stability.md](docs/connectome-stability.md)):
+* `runConnectomeExperiment.m` - orchestrator: runs the whole pipeline from one `.properties` config.
+* `runAllConnectomeExperiments.m`, `newConnectomeExperiment.m`, `loadExperimentConfig.m` - batch runner, config scaffolding, config parsing.
+* `runStabilityCentralities.m`, `runCohortStabilityCentralities.m` - per-subject and whole-cohort analysis.
+* `compareCohortGroups.m`, `compareHemisphericAsymmetry.m`, `compareCentralityMeasures.m`, `compareDstAcrossCohort.m` - the cohort comparisons.
+* `loadConnectome.m`, `listConnectomeSubjects.m`, `makeSyntheticCohort.m` - connectome input, and a synthetic cohort generator for demos and tests.
+* `applyConnectomeNormalisation.m`, `matrixNormalizationColumn.m`, `matrixNormalizationParkes.m`, `matrixNormalizationTvb.m`, `normalisationSchemeInfo.m` - connectome normalisation schemes.
+* `oneDepileptor.m`, `CouplingMatrix.m`, `healthyEpileptorCoupling.m`, `evalEpileptorStability.m`, `findCriticalX0.m`, `sweepCriticalExcitability.m` - 1-D Epileptor model, its linearisation, and the critical-excitability sweep.
+* `computeNetworkCentralities.m` - classical graph centralities (degree, eigenvector, PageRank, Katz, self-communicability, betweenness, closeness) for comparison against the stability centralities.
+* `zScoreOutliers.m`, `welchTTest.m`, `signRankTest.m`, `pairwiseCorrelation.m`, `rankWithNaN.m` - statistics used by the comparisons, implemented without the Statistics Toolbox.
+* `pairHemisphereNodes.m`, `lateralityIndex.m`, `stripHemispherePrefix.m`, `cohortGroupMask.m`, `cohortGroupInfo.m` - hemisphere pairing and case/control grouping.
+* `setupConnectomePaths.m`, `experimentRunParameters.m`, `experimentResultsLayout.m`, `experimentResultsDir.m`, `experimentFolderName.m`, `experimentProvenanceFile.m`, `experimentResultPrefix.m`, `resolveExperimentResultsDir.m`, `locateExperimentResultsFile.m`, `listSubjectResultFiles.m`, `loadCohortResults.m`, `packCohortMetric.m`, `connectomeMetricCatalog.m`, `extractMetricVector.m`, `defaultCohortMetrics.m`, `isAbsolutePath.m` - path setup, results layout, provenance and metric plumbing.
+* `plotConnectomeHeatmaps.m`, `plotStabilityCentralitiesFigure.m`, `plotStabilityScatterFigure.m`, `plotCohortComparisonFigure.m`, `plotCohortOutlierSummary.m`, `renderCohortComparisonFigures.m`, `collectCohortOutlierRows.m`, `collectLateralityOutlierRows.m`, `cohortFigStyle.m`, `applyCohortAxesStyle.m`, `cohortSubjectColors.m`, `saveFigureBoth.m` - figures and shared styling.
+* `reportTopNodes.m`, `reportCohortOutliers.m` - console reports written to the run log.
 
 Underlying scripts involved in _analytical_ computation of projected covariance matrices and $\left\langle \sigma^2 \right\rangle$:
 * `contCon2CovProjected.m` * - computes the projected covariance matrix for the continuous-time case

@@ -1,0 +1,9 @@
+# Generated experiment outputs
+connectome-demo/data/
+connectome-demo/results/
+
+# Third-party Brain Connectivity Toolbox (install locally; see docs/BCT.md)
+2019_03_03_BCT/
+
+# Debug snapshot written by covariancesGaussianNet on a non-stationary C
+nonconvergentNetwork.mat
