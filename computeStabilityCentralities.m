@@ -26,10 +26,10 @@ try
     [~, out.Omega, ~, out.err_fwd] = covariancesGaussianNet(C_healthy, false, MaxK, false, 1);
     out.D_susceptibility = diag(out.Omega);
 catch ME
-    warning('%s:covariancesGaussianNet', warnId, '%s', ME.message);
+    warning([warnId ':covariancesGaussianNet'], '%s', ME.message);
 end
 if ~isnan(out.err_fwd) && out.err_fwd ~= 0
-    warning('%s:covariancesGaussianNet', warnId, ...
+    warning([warnId ':covariancesGaussianNet'], ...
         'covariancesGaussianNet(C) reported err = %d', out.err_fwd);
 end
 
@@ -37,10 +37,10 @@ try
     [~, out.OmegaTranspose, ~, out.err_trans] = covariancesGaussianNet(C_healthy', false, MaxK, false, 1);
     out.D_influence = diag(out.OmegaTranspose);
 catch ME
-    warning('%s:covariancesGaussianNetTranspose', warnId, '%s', ME.message);
+    warning([warnId ':covariancesGaussianNetTranspose'], '%s', ME.message);
 end
 if ~isnan(out.err_trans) && out.err_trans ~= 0
-    warning('%s:covariancesGaussianNetTranspose', warnId, ...
+    warning([warnId ':covariancesGaussianNetTranspose'], ...
         'covariancesGaussianNet(C'') reported err = %d', out.err_trans);
 end
 

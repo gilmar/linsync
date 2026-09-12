@@ -18,14 +18,15 @@ opt = optimset('TolFun', 1e-14, 'TolX', 1e-14, 'Display', 'off');
 [z_fixed, ~, exitflag] = fsolve( ...
     @(z) oneDepileptor(z, x0_healthy, K, tau0), Z0, opt);
 if exitflag <= 0
-    error('%s:HealthyFP', ...
-        'Failed to solve the healthy-state fixed point (exitflag=%d).', exitflag);
+    error([errorId ':HealthyFP'], ...
+        'Failed to solve the healthy-state fixed point (fsolve exitflag = %d).', exitflag);
 end
 
 C_healthy = CouplingMatrix(z_fixed, K, tau0);
 rho_healthy = max(abs(eig(C_healthy)));
 if rho_healthy >= 1
-    error('%s:Unstable', ...
-        'Healthy configuration is already unstable (rho(C) = %.4f >= 1).', rho_healthy);
+    error([errorId ':Unstable'], ...
+        ['Healthy configuration is already unstable (rho(C) = %.4f >= 1), so the ' ...
+         'stationary covariance does not exist.'], rho_healthy);
 end
 end
