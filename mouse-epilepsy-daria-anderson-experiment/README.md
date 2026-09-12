@@ -104,43 +104,53 @@ Example after `runMouseExperiment('configs/initial_column.properties')` (if run 
 
 ```
 results/initial_column_2026-05-23_1430/
-  experiment_initial_column_2026-05-23_1430.properties
-  experiment_parameters_initial_column_2026-05-23_1430.mat
-  experiment_parameters_initial_column_2026-05-23_1430.json
-  run_manifest.mat               # pipeline steps + runParams + cfg
-  reports_initial_column_2026-05-23_1430.log
+  provenance/
+    experiment_initial_column_2026-05-23_1430.properties
+    experiment_parameters_initial_column_2026-05-23_1430.mat
+    experiment_parameters_initial_column_2026-05-23_1430.json
+    run_manifest.mat
+    reports_initial_column_2026-05-23_1430.log
 
-  stabilityCentralities_Anderson_1_column_results.mat
-  stabilityCentralities_Anderson_1_column_figure.{fig,png}
-  ...                            # one result set per mouse (5 mice)
-  stabilityCentralities_summary_topnodes_column.csv
-  stabilityCentralities_summary_overview_column.{fig,png}
-  stabilityCentralities_summary_column.mat
+  stability_centralities/
+    stabilityCentralities_Anderson_1_column_results.mat
+    stabilityCentralities_Anderson_1_column_figure.{fig,png}
+    ...                            # one result set per mouse (5 mice)
+    stabilityCentralities_summary_topnodes_column.csv
+    stabilityCentralities_summary_overview_column.{fig,png}
+    stabilityCentralities_summary_column.mat
 
-  compare_anderson_vs_arnold_Anderson_*_column_D_to_i.{fig,png}
-  compare_anderson_vs_arnold_Anderson_*_column_D_k_to.{fig,png}
-  compare_anderson_vs_arnold_Anderson_*_column_BC.{fig,png}
-  compare_anderson_vs_arnold_Anderson_*_column_outliers.csv
-  compare_anderson_vs_arnold_column.mat
+  anderson_vs_arnold/
+    compare_anderson_vs_arnold_Anderson_*_column_D_to_i.{fig,png}
+    compare_anderson_vs_arnold_Anderson_*_column_D_k_to.{fig,png}
+    compare_anderson_vs_arnold_Anderson_*_column_BC.{fig,png}
+    compare_anderson_vs_arnold_Anderson_*_column_outliers.csv
+    compare_anderson_vs_arnold_column.mat
 
-  compare_LR_asymmetry_Anderson_*_column.{fig,png}
-  compare_LR_asymmetry_Anderson_*_column_outliers.csv
-  LR_asymmetry_groupTest_column.{csv,fig,png}
-  LR_asymmetry_systematic_column.{csv,fig,png}
-  LR_asymmetry_column.mat
+  lr_asymmetry/
+    compare_LR_asymmetry_Anderson_*_column.{fig,png}
+    compare_LR_asymmetry_Anderson_*_column_outliers.csv
+    LR_asymmetry_groupTest_column.{csv,fig,png}
+    LR_asymmetry_systematic_column.{csv,fig,png}
+    LR_asymmetry_column.mat
 
   comparison_figures/            # column scheme only
     region_susc_outliers.{fig,png}
     laterality_influence_outliers.{fig,png}
 
-  centrality_corr_<mouse>_column.{fig,png}
-  centrality_corr_mean_column.{fig,png}
-  centrality_corr_bars_column.{fig,png}
-  centrality_corr_column.mat
+  centrality_correlation/
+    centrality_corr_<mouse>_column.{fig,png}
+    centrality_corr_mean_column.{fig,png}
+    centrality_corr_bars_column.{fig,png}
+    centrality_corr_column.mat
 
-  D_st_cohort_column.csv / .mat / .fig / .png
-  mouse_heatmaps_overview_reference.{fig,png}   # if pipeline.runHeatmap=true
+  dst_cohort/
+    D_st_cohort_column.{csv,mat,fig,png}
+
+  qc/                            # if pipeline.runHeatmap=true
+    mouse_heatmaps_overview_reference.{fig,png}
 ```
+
+Subfolders are created automatically by `runMouseExperiment` and `resolveMouseResultsDir`. Loaders also accept the **legacy flat layout** (same filenames directly under the experiment root) for older runs.
 
 Legacy workflows that call `runAllMiceStabilityCentralities` without `ResultsDir` still write into the flat `results/` directory. Prefer the orchestrator for new work.
 
@@ -258,6 +268,8 @@ Files live in `configs/`. Syntax: `key=value`, `#` comments, one key per line.
 | Path | Role |
 |------|------|
 | `setupMousePaths.m` | Add linsync root, BCT, and this folder to the path; optional `ExperimentName` → `results/<name>/` |
+| `mouseExperimentResultsLayout.m` | Category subfolder paths for one experiment run |
+| `mouseResultsDir.m` / `mouseResultsSearchDirs.m` | Write path + read search order (subfolder, then legacy flat root) |
 | `resolveMouseResultsDir.m` | Resolve `ResultsDir` name-value for all writers |
 | `loadMouseExperimentConfig.m` | Parse `.properties` → MATLAB struct |
 | `mouseExperimentRunParameters.m` | Build / merge / save `runParams` provenance |
@@ -370,7 +382,7 @@ ava = compareAndersonVsArnold('Normalisation', 'column', 'ResultsDir', resultsDi
     'CasePrefix', 'Anderson', 'ControlPrefix', 'Arnold');
 lr  = compareLeftRightAsymmetry('Normalisation', 'column', 'ResultsDir', resultsDir, ...
     'CasePrefix', 'Anderson', 'ControlPrefix', 'Arnold');
-renderComparisonFigures(ava, lr, 'OutputDir', fullfile(resultsDir, 'comparison_figures'));
+renderComparisonFigures(ava, lr, 'OutputDir', mouseResultsDir(resultsDir, 'comparison_figures'));
 ```
 
 Outlier **flagging** uses **Bonferroni correction** at `alpha` from the config (default `0.05`), not a simple \|z\| > `z.threshold`. The `z.threshold` key controls what `reportAndersonOutliers` **displays** in `reports_<run>.log`.
@@ -397,7 +409,7 @@ compareMouseHeatmap('ResultsDir', resultsDir);
 runAllMiceStabilityCentralities('Normalisation', 'column', 'ResultsDir', resultsDir);
 ava = compareAndersonVsArnold('Normalisation', 'column', 'ResultsDir', resultsDir);
 lr  = compareLeftRightAsymmetry('Normalisation', 'column', 'ResultsDir', resultsDir);
-renderComparisonFigures(ava, lr, 'OutputDir', fullfile(resultsDir, 'comparison_figures'));
+renderComparisonFigures(ava, lr, 'OutputDir', mouseResultsDir(resultsDir, 'comparison_figures'));
 ```
 
 Per-mouse stability-centralities files will contain `results.runParameters` built from that script’s options only (no full experiment config unless you pass `'RunParameters', ...`).

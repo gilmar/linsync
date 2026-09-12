@@ -47,8 +47,8 @@ if numel(mice) < 5
     warning('runMouseExperiment:PartialCohort', ...
         'Only %d mice with connectome CSVs under data/.', numel(mice));
 end
-[hasCase, hasControl] = mouseCohortGroupMask(mice, cfg.casePrefix, cfg.controlPrefix);
-canCompareStrains = hasCase && hasControl;
+[isCase, isControl] = mouseCohortGroupMask(mice, cfg.casePrefix, cfg.controlPrefix);
+canCompareStrains = any(isCase) && any(isControl);
 
 cfg.configExperimentName = configExperimentName;
 runParams = mouseExperimentRunParameters('buildFromConfig', cfg, ...
@@ -133,7 +133,7 @@ andersonSummary = andersonOut{1};
 lrSummary = lrOut{1};
 if strcmp(scheme, 'column') && ~isempty(andersonSummary) && ~isempty(lrSummary)
     manifest.steps(end+1) = runPipelineStep(@() renderComparisonFigures( ...
-        andersonSummary, lrSummary, 'OutputDir', fullfile(resultsDir, 'comparison_figures')), ...
+        andersonSummary, lrSummary, 'OutputDir', mouseResultsDir(resultsDir, 'comparison_figures')), ...
         'renderComparisonFigures', cfg.pipelineStopOnError);
 end
 
@@ -164,14 +164,14 @@ runParams.finishedAt = manifest.finishedAt;
 runParams.pipelineSteps = manifest.steps;
 manifest.runParameters = runParams;
 mouseExperimentRunParameters('save', resultsDir, runParams);
-save(fullfile(resultsDir, 'run_manifest.mat'), 'manifest', 'cfg', 'runParams');
+save(fullfile(mouseResultsDir(resultsDir, 'provenance'), 'run_manifest.mat'), 'manifest', 'cfg', 'runParams');
 
 if cohortReady
     manifest.steps(end+1) = runPipelineStep(@() assertMouseExperimentOutputs( ...
         resultsDir, scheme, cfg, mice), 'assertExpectedOutputs', cfg.pipelineStopOnError);
     manifest.allSucceeded = all([manifest.steps.success]);
     runParams.pipelineSteps = manifest.steps;
-    save(fullfile(resultsDir, 'run_manifest.mat'), 'manifest', 'cfg', 'runParams');
+    save(fullfile(mouseResultsDir(resultsDir, 'provenance'), 'run_manifest.mat'), 'manifest', 'cfg', 'runParams');
 else
     manifest.allSucceeded = all([manifest.steps.success]);
 end

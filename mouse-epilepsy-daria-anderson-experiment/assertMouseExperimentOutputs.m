@@ -5,8 +5,9 @@ function report = assertMouseExperimentOutputs(resultsDir, scheme, cfg, mice)
 %
 %   Checks filenames produced by runMouseExperiment (stabilityCentralities_*,
 %   centrality_corr_*, compare_anderson_vs_arnold_*, D_st_cohort_*, etc.)
-%   against the artefact types in results/mouse_experiment_reference/ (which
-%   used the legacy section45_* prefix for the same pipeline steps).
+%   under the category subfolders defined by mouseExperimentResultsLayout.
+%   Legacy flat layouts under the experiment root are also accepted when
+%   reading (see locateResultsFile).
 %
 %   Throws assertMouseExperimentOutputs:MissingFiles if anything required
 %   is absent.
@@ -58,14 +59,10 @@ end
 function paths = expectedOutputPaths(resultsDir, scheme, cfg, mice, prefix, expName)
 paths = {};
 
-% Orchestrator provenance (always)
 paths = [paths; provenancePaths(resultsDir, expName)];
 
 if cfg.pipelineRunHeatmap
-    paths = [paths; { ...
-        fullfile(resultsDir, 'mouse_heatmaps_overview_reference.fig')
-        fullfile(resultsDir, 'mouse_heatmaps_overview_reference.png')
-        }];
+    paths = [paths; qcPaths(resultsDir, cfg)];
 end
 
 if cfg.pipelineRunStabilityCentralities
@@ -110,16 +107,29 @@ paths = {
     mouseExperimentProvenanceFile(resultsDir, expName, 'properties')
     mouseExperimentProvenanceFile(resultsDir, expName, 'parametersMat')
     mouseExperimentProvenanceFile(resultsDir, expName, 'parametersJson')
-    fullfile(resultsDir, 'run_manifest.mat')
+    fullfile(mouseResultsDir(resultsDir, 'provenance'), 'run_manifest.mat')
+    };
+end
+
+function paths = qcPaths(resultsDir, cfg)
+paths = {};
+if ~cfg.saveResults
+    return;
+end
+d = mouseResultsDir(resultsDir, 'qc');
+paths = {
+    fullfile(d, 'mouse_heatmaps_overview_reference.fig')
+    fullfile(d, 'mouse_heatmaps_overview_reference.png')
     };
 end
 
 function paths = perMouseStabilityPaths(resultsDir, prefix, mouseId, scheme, cfg)
-paths = {fullfile(resultsDir, sprintf('%s_%s_%s_results.mat', prefix, mouseId, scheme))};
+d = mouseResultsDir(resultsDir, 'stability');
+paths = {fullfile(d, sprintf('%s_%s_%s_results.mat', prefix, mouseId, scheme))};
 if cfg.saveResults
     paths = [paths; {
-        fullfile(resultsDir, sprintf('%s_%s_%s_figure.fig', prefix, mouseId, scheme))
-        fullfile(resultsDir, sprintf('%s_%s_%s_figure.png', prefix, mouseId, scheme))
+        fullfile(d, sprintf('%s_%s_%s_figure.fig', prefix, mouseId, scheme))
+        fullfile(d, sprintf('%s_%s_%s_figure.png', prefix, mouseId, scheme))
         }];
 end
 end
@@ -129,11 +139,12 @@ paths = {};
 if ~cfg.saveResults
     return;
 end
+d = mouseResultsDir(resultsDir, 'stability');
 paths = {
-    fullfile(resultsDir, sprintf('%s_summary_topnodes_%s.csv', prefix, scheme))
-    fullfile(resultsDir, sprintf('%s_summary_overview_%s.fig', prefix, scheme))
-    fullfile(resultsDir, sprintf('%s_summary_overview_%s.png', prefix, scheme))
-    fullfile(resultsDir, sprintf('%s_summary_%s.mat', prefix, scheme))
+    fullfile(d, sprintf('%s_summary_topnodes_%s.csv', prefix, scheme))
+    fullfile(d, sprintf('%s_summary_overview_%s.fig', prefix, scheme))
+    fullfile(d, sprintf('%s_summary_overview_%s.png', prefix, scheme))
+    fullfile(d, sprintf('%s_summary_%s.mat', prefix, scheme))
     };
 end
 
@@ -142,19 +153,20 @@ paths = {};
 if ~cfg.saveResults
     return;
 end
+d = mouseResultsDir(resultsDir, 'centrality_correlation');
 for m = 1:numel(mice)
     mid = mice{m};
     paths = [paths; {
-        fullfile(resultsDir, sprintf('centrality_corr_%s_%s.fig', mid, scheme))
-        fullfile(resultsDir, sprintf('centrality_corr_%s_%s.png', mid, scheme))
+        fullfile(d, sprintf('centrality_corr_%s_%s.fig', mid, scheme))
+        fullfile(d, sprintf('centrality_corr_%s_%s.png', mid, scheme))
         }]; %#ok<AGROW>
 end
 paths = [paths; {
-    fullfile(resultsDir, sprintf('centrality_corr_mean_%s.fig', scheme))
-    fullfile(resultsDir, sprintf('centrality_corr_mean_%s.png', scheme))
-    fullfile(resultsDir, sprintf('centrality_corr_bars_%s.fig', scheme))
-    fullfile(resultsDir, sprintf('centrality_corr_bars_%s.png', scheme))
-    fullfile(resultsDir, sprintf('centrality_corr_%s.mat', scheme))
+    fullfile(d, sprintf('centrality_corr_mean_%s.fig', scheme))
+    fullfile(d, sprintf('centrality_corr_mean_%s.png', scheme))
+    fullfile(d, sprintf('centrality_corr_bars_%s.fig', scheme))
+    fullfile(d, sprintf('centrality_corr_bars_%s.png', scheme))
+    fullfile(d, sprintf('centrality_corr_%s.mat', scheme))
     }];
 end
 
@@ -163,9 +175,11 @@ paths = {};
 if ~cfg.saveResults
     return;
 end
+d = mouseResultsDir(resultsDir, 'anderson_vs_arnold');
 hasBC = true;
-matPath = fullfile(resultsDir, sprintf('compare_anderson_vs_arnold_%s.mat', scheme));
-if isfile(matPath)
+matPath = locateResultsFile(resultsDir, 'anderson_vs_arnold', ...
+    sprintf('compare_anderson_vs_arnold_%s.mat', scheme));
+if ~isempty(matPath)
     s = load(matPath, 'hasBC');
     if isfield(s, 'hasBC')
         hasBC = s.hasBC;
@@ -181,13 +195,12 @@ for m = 1:numel(andersonMice)
     for s = 1:numel(metricSuffixes)
         suffix = metricSuffixes{s};
         paths = [paths; {
-            fullfile(resultsDir, sprintf('compare_anderson_vs_arnold_%s_%s_%s.fig', aname, scheme, suffix))
-            fullfile(resultsDir, sprintf('compare_anderson_vs_arnold_%s_%s_%s.png', aname, scheme, suffix))
+            fullfile(d, sprintf('compare_anderson_vs_arnold_%s_%s_%s.fig', aname, scheme, suffix))
+            fullfile(d, sprintf('compare_anderson_vs_arnold_%s_%s_%s.png', aname, scheme, suffix))
             }]; %#ok<AGROW>
     end
-    % Outlier CSV is written only when outliers exist; do not require.
 end
-paths{end+1, 1} = fullfile(resultsDir, sprintf('compare_anderson_vs_arnold_%s.mat', scheme));
+paths{end+1, 1} = fullfile(d, sprintf('compare_anderson_vs_arnold_%s.mat', scheme));
 end
 
 function paths = lrAsymmetryPaths(resultsDir, scheme, mice, cfg)
@@ -195,22 +208,23 @@ paths = {};
 if ~cfg.saveResults
     return;
 end
+d = mouseResultsDir(resultsDir, 'lr_asymmetry');
 andersonMice = mice(startsWith(mice, 'Anderson'));
 for m = 1:numel(andersonMice)
     aname = andersonMice{m};
     paths = [paths; {
-        fullfile(resultsDir, sprintf('compare_LR_asymmetry_%s_%s.fig', aname, scheme))
-        fullfile(resultsDir, sprintf('compare_LR_asymmetry_%s_%s.png', aname, scheme))
+        fullfile(d, sprintf('compare_LR_asymmetry_%s_%s.fig', aname, scheme))
+        fullfile(d, sprintf('compare_LR_asymmetry_%s_%s.png', aname, scheme))
         }]; %#ok<AGROW>
 end
 paths = [paths; {
-    fullfile(resultsDir, sprintf('LR_asymmetry_groupTest_%s.fig', scheme))
-    fullfile(resultsDir, sprintf('LR_asymmetry_groupTest_%s.png', scheme))
-    fullfile(resultsDir, sprintf('LR_asymmetry_groupTest_%s.csv', scheme))
-    fullfile(resultsDir, sprintf('LR_asymmetry_systematic_%s.fig', scheme))
-    fullfile(resultsDir, sprintf('LR_asymmetry_systematic_%s.png', scheme))
-    fullfile(resultsDir, sprintf('LR_asymmetry_systematic_%s.csv', scheme))
-    fullfile(resultsDir, sprintf('LR_asymmetry_%s.mat', scheme))
+    fullfile(d, sprintf('LR_asymmetry_groupTest_%s.fig', scheme))
+    fullfile(d, sprintf('LR_asymmetry_groupTest_%s.png', scheme))
+    fullfile(d, sprintf('LR_asymmetry_groupTest_%s.csv', scheme))
+    fullfile(d, sprintf('LR_asymmetry_systematic_%s.fig', scheme))
+    fullfile(d, sprintf('LR_asymmetry_systematic_%s.png', scheme))
+    fullfile(d, sprintf('LR_asymmetry_systematic_%s.csv', scheme))
+    fullfile(d, sprintf('LR_asymmetry_%s.mat', scheme))
     }];
 end
 
@@ -219,10 +233,11 @@ paths = {};
 if ~cfg.saveResults
     return;
 end
+d = mouseResultsDir(resultsDir, 'dst_cohort');
 paths = {
-    fullfile(resultsDir, sprintf('D_st_cohort_%s.csv', scheme))
-    fullfile(resultsDir, sprintf('D_st_cohort_%s.fig', scheme))
-    fullfile(resultsDir, sprintf('D_st_cohort_%s.png', scheme))
-    fullfile(resultsDir, sprintf('D_st_cohort_%s.mat', scheme))
+    fullfile(d, sprintf('D_st_cohort_%s.csv', scheme))
+    fullfile(d, sprintf('D_st_cohort_%s.fig', scheme))
+    fullfile(d, sprintf('D_st_cohort_%s.png', scheme))
+    fullfile(d, sprintf('D_st_cohort_%s.mat', scheme))
     };
 end

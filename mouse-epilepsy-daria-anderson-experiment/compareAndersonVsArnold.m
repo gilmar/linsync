@@ -20,7 +20,7 @@ function summary = compareAndersonVsArnold(varargin)
 %   * red markers  -- the Anderson mouse's per-node value
 %   * black ring + label  -- nodes with |z| >= ZThreshold
 %
-% Outputs (under results/):
+% Outputs (under results/<experiment>/anderson_vs_arnold/):
 %   compare_anderson_vs_arnold_<mouseId>_<scheme>_D_to_i.{fig,png}
 %   compare_anderson_vs_arnold_<mouseId>_<scheme>_D_k_to.{fig,png}
 %   compare_anderson_vs_arnold_<mouseId>_<scheme>_BC.{fig,png}  (when BC present)
@@ -60,6 +60,7 @@ casePrefix = char(opts.CasePrefix);
 controlPrefix = char(opts.ControlPrefix);
 
 resultsDir = resolveMouseResultsDir(opts.ResultsDir);
+outDir = mouseResultsDir(resultsDir, 'anderson_vs_arnold');
 
 %% Discover and load per-mouse result files
 files = listPerMouseResultFiles(resultsDir, scheme);
@@ -72,7 +73,7 @@ end
 mice    = cell(0, 1);
 loaded  = cell(0, 1);
 for k = 1:numel(files)
-    s = load(fullfile(resultsDir, files(k).name));
+    s = load(fullfile(files(k).folder, files(k).name));
     if ~isfield(s, 'results'); continue; end
     r = s.results;
     if ~ischar(r.mouseId) && ~isstring(r.mouseId); continue; end
@@ -217,7 +218,7 @@ for a = 1:numel(andersonNames)
             labels, trivialAcrossArnold, mp.outliers, mp.title, mp.short, cohortTitle, ...
             sprintf('%s vs Arnold — %s', aname, mp.short));
         if opts.SaveResults
-            saveComparisonFigure(fig, resultsDir, sprintf('%s_%s', baseName, mp.suffix));
+            saveComparisonFigure(fig, outDir, sprintf('%s_%s', baseName, mp.suffix));
         else
             close(fig);
         end
@@ -258,7 +259,7 @@ for a = 1:numel(andersonNames)
             minBonfP = min([T.p_bonf_susc, T.p_bonf_infl, T.p_bonf_BC], [], 2);
             [~, ord] = sort(minBonfP, 'ascend');
             T = T(ord, :);
-            writetable(T, fullfile(resultsDir, [baseName '_outliers.csv']));
+            writetable(T, fullfile(outDir, [baseName '_outliers.csv']));
             fprintf('  %s: %d outlier node(s) (Bonferroni p<%.3f, |z|>=%.2f, m=%d) -> %s\n', ...
                 aname, numel(outIdx), opts.Alpha, zThresh_bonf, nTests, [baseName '_outliers.csv']);
         else
@@ -306,7 +307,7 @@ else
 end
 
 if opts.SaveResults
-    save(fullfile(resultsDir, ...
+    save(fullfile(outDir, ...
         sprintf('compare_anderson_vs_arnold_%s.mat', scheme)), ...
         '-struct', 'summary');
 end
@@ -636,10 +637,10 @@ end
 end
 
 %% ------------------------------------------------------------------
-function saveComparisonFigure(fig, resultsDir, baseName)
+function saveComparisonFigure(fig, outDir, baseName)
 %SAVECOMPARISONFIGURE Write .fig and .png for one comparison figure.
-pngPath = fullfile(resultsDir, [baseName '.png']);
-savefig(fig, fullfile(resultsDir, [baseName '.fig']));
+pngPath = fullfile(outDir, [baseName '.png']);
+savefig(fig, fullfile(outDir, [baseName '.fig']));
 try
     exportgraphics(fig, pngPath, 'Resolution', 200, 'BackgroundColor', 'white');
 catch

@@ -6,7 +6,7 @@ if nargin >= 1 && ~isempty(outputDir)
 end
 if nargin >= 2 && isstruct(summary) && isfield(summary, 'runParameters') ...
         && isstruct(summary.runParameters) && isfield(summary.runParameters, 'resultsDir')
-    outDir = fullfile(summary.runParameters.resultsDir, 'comparison_figures');
+    outDir = mouseResultsDir(summary.runParameters.resultsDir, 'comparison_figures');
 else
     outDir = 'comparison_figures';
 end

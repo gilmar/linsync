@@ -38,6 +38,7 @@ addParameter(p, 'ResultsDir', '', @(s) ischar(s) || isstring(s));
 parse(p, nvArgs{:});
 style = validatestring(style, {'csv', 'reference'});
 resultsDir = resolveMouseResultsDir(p.Results.ResultsDir);
+outDir = mouseResultsDir(resultsDir, 'qc');
 
 mice = listAvailableMice();
 nMice = numel(mice);
@@ -106,13 +107,13 @@ sgtitle(sprintf(['Mouse coarse connectomes (%s layout) -- compare with ', ...
                  'data/<mouseId>/coarse\\_connectome\\_*.png'], style));
 
 baseName = sprintf('mouse_heatmaps_overview_%s', style);
-savefig(fig, fullfile(resultsDir, [baseName '.fig']));
+savefig(fig, fullfile(outDir, [baseName '.fig']));
 try
-    exportgraphics(fig, fullfile(resultsDir, [baseName '.png']), 'Resolution', 200);
+    exportgraphics(fig, fullfile(outDir, [baseName '.png']), 'Resolution', 200);
 catch
-    saveas(fig, fullfile(resultsDir, [baseName '.png']));
+    saveas(fig, fullfile(outDir, [baseName '.png']));
 end
-fprintf('Saved %s\n', fullfile(resultsDir, [baseName '.png']));
+fprintf('Saved %s\n', fullfile(outDir, [baseName '.png']));
 close(fig);
 end
 

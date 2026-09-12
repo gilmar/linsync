@@ -41,6 +41,7 @@ normalisation = char(opts.Normalisation);
 topK          = opts.TopK;
 
 resultsDir = resolveMouseResultsDir(opts.ResultsDir);
+stabilityDir = mouseResultsDir(resultsDir, 'stability');
 
 mice = listAvailableMice();
 if isempty(mice)
@@ -183,7 +184,7 @@ for kk = 1:N
 end
 
 T = cell2table(summaryTable, 'VariableNames', header);
-csvFile = fullfile(resultsDir, sprintf('%s_summary_topnodes_%s.csv', resultPrefix, normalisation));
+csvFile = fullfile(stabilityDir, sprintf('%s_summary_topnodes_%s.csv', resultPrefix, normalisation));
 writetable(T, csvFile);
 fprintf('\nWrote summary table %s\n', csvFile);
 
@@ -250,11 +251,11 @@ else
     sgtitle(sprintf('Cross-mouse stability centralities  --  normalisation = %s', normalisation));
 end
 
-savefig(overviewFig, fullfile(resultsDir, sprintf('%s_summary_overview_%s.fig', resultPrefix, normalisation)));
+savefig(overviewFig, fullfile(stabilityDir, sprintf('%s_summary_overview_%s.fig', resultPrefix, normalisation)));
 try
-    exportgraphics(overviewFig, fullfile(resultsDir, sprintf('%s_summary_overview_%s.png', resultPrefix, normalisation)), 'Resolution', 200);
+    exportgraphics(overviewFig, fullfile(stabilityDir, sprintf('%s_summary_overview_%s.png', resultPrefix, normalisation)), 'Resolution', 200);
 catch
-    saveas(overviewFig, fullfile(resultsDir, sprintf('%s_summary_overview_%s.png', resultPrefix, normalisation)));
+    saveas(overviewFig, fullfile(stabilityDir, sprintf('%s_summary_overview_%s.png', resultPrefix, normalisation)));
 end
 close(overviewFig);
 
@@ -266,7 +267,7 @@ if isempty(opts.RunParameters)
 else
     runParameters = opts.RunParameters;
 end
-save(fullfile(resultsDir, sprintf('%s_summary_%s.mat', resultPrefix, normalisation)), ...
+save(fullfile(stabilityDir, sprintf('%s_summary_%s.mat', resultPrefix, normalisation)), ...
     'mice', 'canonicalLabels', 'D_susc_all', 'D_infl_all', 'x0_crit_all', ...
     'mean_rank_susc', 'mean_rank_infl', 'mean_rank_x0', 'normalisation', ...
     'isTrivial_any_mouse', 'runParameters');

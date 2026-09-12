@@ -12,6 +12,7 @@ if ~isempty(resultsDirArg)
     if ~exist(resultsDir, 'dir')
         mkdir(resultsDir);
     end
+    ensureMouseExperimentResultsDirs(resultsDir);
 else
     resultsDir = setupMousePaths();
 end

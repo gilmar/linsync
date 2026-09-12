@@ -1,5 +1,8 @@
 function fig = plotLateralityInfluenceOutliers(lrSummary, varargin)
 %PLOTLATERALITYINFLUENCEOUTLIERS  Significant L-R influence D(k->) pairs (signed LI).
+%
+%   Case raw differences are point estimates (filled circles); Arnold reference
+%   is mean +/- SD (diamond + horizontal error bar). Zero reference line shown.
 
 p = inputParser;
 addParameter(p, 'OutputDir', '', @(s) ischar(s) || isstring(s));
@@ -53,16 +56,20 @@ legL = {};
 legSeen = containers.Map('KeyType', 'char', 'ValueType', 'logical');
 hDiamond = [];
 ytl = cell(nRows, 1);
+dotSize = 9;
 for k = 1:nRows
     r = rows(k);
     col = colors(r.mouseId);
+    edgeCol = min(col * 0.75, 1);
     if ~legSeen.isKey(r.mouseId)
-        bh = barh(ax, yPos(k), r.raw, 0.55, 'FaceColor', col, 'EdgeColor', 'none');
-        legH(end+1) = bh; %#ok<AGROW>
+        ph = plot(ax, r.raw, yPos(k), 'o', 'Color', edgeCol, ...
+            'MarkerFaceColor', col, 'MarkerSize', dotSize, 'LineWidth', 1.2);
+        legH(end+1) = ph; %#ok<AGROW>
         legL{end+1} = r.mouseId; %#ok<AGROW>
         legSeen(r.mouseId) = true;
     else
-        barh(ax, yPos(k), r.raw, 0.55, 'FaceColor', col, 'EdgeColor', 'none', ...
+        plot(ax, r.raw, yPos(k), 'o', 'Color', edgeCol, ...
+            'MarkerFaceColor', col, 'MarkerSize', dotSize, 'LineWidth', 1.2, ...
             'HandleVisibility', 'off');
     end
     if isempty(hDiamond)
@@ -78,12 +85,13 @@ for k = 1:nRows
     end
     ytl{k} = sprintf('%s\n%s', prettyRegionName(r.region), r.mouseId);
     annot = sprintf('%+.2f   (z = %.1f)', r.raw, r.z);
-    textX = r.raw + 0.03 * diff(xLim);
-    if r.raw < 0
-        textX = r.raw - 0.03 * diff(xLim);
-        ha = 'right';
-    else
+    textOffset = 0.04 * diff(xLim);
+    if r.raw >= 0
+        textX = r.raw + textOffset;
         ha = 'left';
+    else
+        textX = r.raw - textOffset;
+        ha = 'right';
     end
     text(ax, textX, yPos(k), annot, ...
         'Color', P.ink, 'FontSize', 9, 'VerticalAlignment', 'middle', ...

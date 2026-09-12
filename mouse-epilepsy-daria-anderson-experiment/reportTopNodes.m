@@ -49,9 +49,10 @@ end
 
 resultsDir = resolveMouseResultsDir(opts.ResultsDir);
 prefix = mouseExperimentResultPrefix();
-csvFile = fullfile(resultsDir, sprintf('%s_summary_topnodes_%s.csv', prefix, normStr));
-if ~exist(csvFile, 'file')
-    error('reportTopNodes: file not found:\n  %s\nRun runAllMiceStabilityCentralities first.', csvFile);
+csvFile = locateResultsFile(resultsDir, 'stability', ...
+    sprintf('%s_summary_topnodes_%s.csv', prefix, normStr));
+if isempty(csvFile)
+    error('reportTopNodes: file not found:\n  %s_summary_topnodes_%s.csv\nRun runAllMiceStabilityCentralities first.', prefix, normStr);
 end
 
 T = readtable(csvFile, 'TextType', 'string');

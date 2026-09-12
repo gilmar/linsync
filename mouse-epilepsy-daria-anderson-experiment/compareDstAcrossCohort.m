@@ -34,6 +34,7 @@ opts   = p.Results;
 scheme = char(opts.Normalisation);
 
 resultsDir = resolveMouseResultsDir(opts.ResultsDir);
+outDir = mouseResultsDir(resultsDir, 'dst_cohort');
 
 files = listPerMouseResultFiles(resultsDir, scheme);
 if isempty(files)
@@ -45,7 +46,7 @@ mice  = strings(0, 1);
 Dst   = nan(0, 1);
 rhoC  = nan(0, 1);
 for k = 1:numel(files)
-    s = load(fullfile(resultsDir, files(k).name));
+    s = load(fullfile(files(k).folder, files(k).name));
     if ~isfield(s, 'results'); continue; end
     r = s.results;
     if ~isfield(r, 'D_st_healthy') || ~isfield(r, 'C_healthy')
@@ -150,16 +151,16 @@ summary = struct( ...
     'runParameters', runParameters);
 
 if opts.SaveResults
-    csvPath = fullfile(resultsDir, sprintf('D_st_cohort_%s.csv', scheme));
+    csvPath = fullfile(outDir, sprintf('D_st_cohort_%s.csv', scheme));
     writetable(T, csvPath);
-    figBase = fullfile(resultsDir, sprintf('D_st_cohort_%s', scheme));
+    figBase = fullfile(outDir, sprintf('D_st_cohort_%s', scheme));
     savefig(fig, [figBase '.fig']);
     try
         exportgraphics(fig, [figBase '.png'], 'Resolution', 200);
     catch
         saveas(fig, [figBase '.png']);
     end
-    save(fullfile(resultsDir, sprintf('D_st_cohort_%s.mat', scheme)), ...
+    save(fullfile(outDir, sprintf('D_st_cohort_%s.mat', scheme)), ...
         'summary', 'runParameters');
     fprintf('Wrote %s, %s.{fig,png}, D_st_cohort_%s.mat\n', csvPath, figBase, scheme);
     close(fig);

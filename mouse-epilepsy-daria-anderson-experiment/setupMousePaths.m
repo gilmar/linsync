@@ -46,5 +46,6 @@ else
     if ~exist(resultsDir, 'dir')
         mkdir(resultsDir);
     end
+    ensureMouseExperimentResultsDirs(resultsDir);
 end
 end

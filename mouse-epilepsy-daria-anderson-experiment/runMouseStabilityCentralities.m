@@ -61,6 +61,7 @@ opts = p.Results;
 mouseId = char(opts.mouseId);
 
 resultsDir = resolveMouseResultsDir(opts.ResultsDir);
+stabilityDir = mouseResultsDir(resultsDir, 'stability');
 
 %% Load + normalise
 [K_raw, labels, info] = loadMouseConnectome(mouseId);
@@ -255,19 +256,19 @@ end
 if opts.SaveResults
     prefix = mouseExperimentResultPrefix();
     baseName = sprintf('%s_%s_%s', prefix, mouseId, opts.Normalisation);
-    save(fullfile(resultsDir, [baseName '_results.mat']), 'results');
+    save(fullfile(stabilityDir, [baseName '_results.mat']), 'results');
     if opts.Plot && ~isempty(fig)
-        savefig(fig, fullfile(resultsDir, [baseName '_figure.fig']));
+        savefig(fig, fullfile(stabilityDir, [baseName '_figure.fig']));
         try
-            exportgraphics(fig, fullfile(resultsDir, [baseName '_figure.png']), 'Resolution', 200);
+            exportgraphics(fig, fullfile(stabilityDir, [baseName '_figure.png']), 'Resolution', 200);
         catch
-            saveas(fig, fullfile(resultsDir, [baseName '_figure.png']));
+            saveas(fig, fullfile(stabilityDir, [baseName '_figure.png']));
         end
         close(fig);
     end
     if opts.Verbose
         fprintf('Saved results to %s\n', ...
-            fullfile(resultsDir, [baseName '_results.mat']));
+            fullfile(stabilityDir, [baseName '_results.mat']));
     end
 end
 end

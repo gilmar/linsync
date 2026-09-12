@@ -27,5 +27,5 @@ switch lower(kind)
         error('mouseExperimentProvenanceFile:BadKind', ...
             'kind must be properties, parametersMat, parametersJson, or reports.');
 end
-fpath = fullfile(resultsDir, fname);
+fpath = fullfile(mouseResultsDir(resultsDir, 'provenance'), fname);
 end

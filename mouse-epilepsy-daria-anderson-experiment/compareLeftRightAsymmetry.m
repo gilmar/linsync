@@ -65,6 +65,7 @@ opts.LateralityBasis = basis;
 useSigned = strcmp(basis, 'signed');
 
 resultsDir = resolveMouseResultsDir(opts.ResultsDir);
+outDir = mouseResultsDir(resultsDir, 'lr_asymmetry');
 
 %% Load per-mouse results
 files = listPerMouseResultFiles(resultsDir, scheme);
@@ -77,7 +78,7 @@ end
 mice   = cell(0, 1);
 loaded = cell(0, 1);
 for k = 1:numel(files)
-    s = load(fullfile(resultsDir, files(k).name));
+    s = load(fullfile(files(k).folder, files(k).name));
     if ~isfield(s, 'results'); continue; end
     r = s.results;
     if ~ischar(r.mouseId) && ~isstring(r.mouseId); continue; end
@@ -283,17 +284,17 @@ for a = 1:numel(andersonNames)
 
     if opts.SaveResults
         baseName = sprintf('compare_LR_asymmetry_%s_%s', aname, scheme);
-        savefig(fig, fullfile(resultsDir, [baseName '.fig']));
+        savefig(fig, fullfile(outDir, [baseName '.fig']));
         try
-            exportgraphics(fig, fullfile(resultsDir, [baseName '.png']), 'Resolution', 200);
+            exportgraphics(fig, fullfile(outDir, [baseName '.png']), 'Resolution', 200);
         catch
-            saveas(fig, fullfile(resultsDir, [baseName '.png']));
+            saveas(fig, fullfile(outDir, [baseName '.png']));
         end
         close(fig);
 
         if ~isempty(outIdx)
             T = outlierTables.(matlab.lang.makeValidName(aname));
-            writetable(T, fullfile(resultsDir, [baseName '_outliers.csv']));
+            writetable(T, fullfile(outDir, [baseName '_outliers.csv']));
             fprintf('  %s: %d outlier pair(s) -> %s_outliers.csv\n', ...
                 aname, numel(outIdx), baseName);
         else
@@ -401,11 +402,11 @@ Tsys = cell2table(vertcat(sysRows{:}), ...
 
 %% Group-test and systematic figures
 if opts.SaveResults
-    plotGroupTestFigure(resultsDir, scheme, pairLabels, metricNames, ylabs, ...
+    plotGroupTestFigure(outDir, scheme, pairLabels, metricNames, ylabs, ...
         LI_norm, isAnderson, isArnold, groupTest, opts.Alpha);
-    plotSystematicFigure(resultsDir, scheme, metricNames, ylabs, systematic, Tsys);
-    writetable(Tgroup, fullfile(resultsDir, sprintf('LR_asymmetry_groupTest_%s.csv', scheme)));
-    writetable(Tsys, fullfile(resultsDir, sprintf('LR_asymmetry_systematic_%s.csv', scheme)));
+    plotSystematicFigure(outDir, scheme, metricNames, ylabs, systematic, Tsys);
+    writetable(Tgroup, fullfile(outDir, sprintf('LR_asymmetry_groupTest_%s.csv', scheme)));
+    writetable(Tsys, fullfile(outDir, sprintf('LR_asymmetry_systematic_%s.csv', scheme)));
     fprintf('Wrote LR_asymmetry_groupTest_%s.csv, LR_asymmetry_systematic_%s.csv\n', ...
         scheme, scheme);
 end
@@ -450,7 +451,7 @@ else
 end
 
 if opts.SaveResults
-    save(fullfile(resultsDir, sprintf('LR_asymmetry_%s.mat', scheme)), ...
+    save(fullfile(outDir, sprintf('LR_asymmetry_%s.mat', scheme)), ...
         '-struct', 'summary');
 end
 
@@ -643,7 +644,7 @@ legend(ax, 'Location', 'best');
 end
 
 %% ------------------------------------------------------------------
-function plotGroupTestFigure(resultsDir, scheme, pairLabels, metricNames, ylabs, ...
+function plotGroupTestFigure(outDir, scheme, pairLabels, metricNames, ylabs, ...
     LI_norm, isAnderson, isArnold, groupTest, alpha)
 
 nMet = numel(metricNames);
@@ -697,7 +698,7 @@ end
 sgtitle(sprintf('Group-level L-R laterality: Anderson vs Arnold  --  %s', scheme), ...
     'Interpreter', 'tex');
 
-base = fullfile(resultsDir, sprintf('LR_asymmetry_groupTest_%s', scheme));
+base = fullfile(outDir, sprintf('LR_asymmetry_groupTest_%s', scheme));
 savefig(fig, [base '.fig']);
 try
     exportgraphics(fig, [base '.png'], 'Resolution', 200);
@@ -708,7 +709,7 @@ close(fig);
 end
 
 %% ------------------------------------------------------------------
-function plotSystematicFigure(resultsDir, scheme, metricNames, ylabs, systematic, Tsys)
+function plotSystematicFigure(outDir, scheme, metricNames, ylabs, systematic, Tsys)
 
 nMet = numel(metricNames);
 fig = figure('Name', sprintf('L-R systematic (%s)', scheme), ...
@@ -762,7 +763,7 @@ for m = 1:nMet
     end
 end
 
-base = fullfile(resultsDir, sprintf('LR_asymmetry_systematic_%s', scheme));
+base = fullfile(outDir, sprintf('LR_asymmetry_systematic_%s', scheme));
 savefig(fig, [base '.fig']);
 try
     exportgraphics(fig, [base '.png'], 'Resolution', 200);

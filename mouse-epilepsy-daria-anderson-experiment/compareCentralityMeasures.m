@@ -62,6 +62,7 @@ if ~ismember(reorder, {'cluster', 'fixed'})
 end
 
 resultsDir = resolveMouseResultsDir(opts.ResultsDir);
+outDir = mouseResultsDir(resultsDir, 'centrality_correlation');
 
 %% Discover and load per-mouse result files
 files = listPerMouseResultFiles(resultsDir, scheme);
@@ -77,7 +78,7 @@ M = numel(measures);
 mice   = cell(0, 1);
 loaded = cell(0, 1);
 for k = 1:numel(files)
-    s = load(fullfile(resultsDir, files(k).name));
+    s = load(fullfile(files(k).folder, files(k).name));
     if ~isfield(s, 'results'); continue; end
     r = s.results;
     if ~isfield(r, 'centralities') || isempty(fieldnames(r.centralities))
@@ -141,7 +142,7 @@ if opts.PerMouse
         fig = plotCorrHeatmap(corrAll(order, order, m), displayOrdered, ttl, true);
         if opts.SaveResults
             baseName = sprintf('centrality_corr_%s_%s', mice{m}, scheme);
-            saveFigBoth(fig, fullfile(resultsDir, baseName));
+            saveFigBoth(fig, fullfile(outDir, baseName));
         end
     end
 end
@@ -152,7 +153,7 @@ ttl = sprintf('Mean centrality correlations across %d mice   (%s, scheme=%s, %s)
 fig = plotCorrHeatmap(meanCorr(order, order), displayOrdered, ttl, true);
 if opts.SaveResults
     baseName = sprintf('centrality_corr_mean_%s', scheme);
-    saveFigBoth(fig, fullfile(resultsDir, baseName));
+    saveFigBoth(fig, fullfile(outDir, baseName));
 end
 
 %% Bar chart -- D(->i) and D(k->) vs each classical centrality
@@ -200,7 +201,7 @@ grid(ax, 'on'); box(ax, 'on');
 
 if opts.SaveResults
     baseName = sprintf('centrality_corr_bars_%s', scheme);
-    saveFigBoth(fig, fullfile(resultsDir, baseName));
+    saveFigBoth(fig, fullfile(outDir, baseName));
 end
 
 %% Pack summary
@@ -231,7 +232,7 @@ else
 end
 
 if opts.SaveResults
-    save(fullfile(resultsDir, sprintf('centrality_corr_%s.mat', scheme)), ...
+    save(fullfile(outDir, sprintf('centrality_corr_%s.mat', scheme)), ...
         '-struct', 'summary');
 end
 end

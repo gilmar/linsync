@@ -10,16 +10,19 @@ end
 
 scheme = char(scheme);
 allFiles = [];
-for prefix = {'stabilityCentralities', 'section45'}
-    found = dir(fullfile(resultsDir, sprintf('%s_*_%s_results.mat', prefix{1}, scheme)));
-    allFiles = [allFiles; found]; %#ok<AGROW>
+searchDirs = mouseResultsSearchDirs(resultsDir, 'stability');
+for d = 1:numel(searchDirs)
+    for prefix = {'stabilityCentralities', 'section45'}
+        found = dir(fullfile(searchDirs{d}, sprintf('%s_*_%s_results.mat', prefix{1}, scheme)));
+        allFiles = [allFiles; found]; %#ok<AGROW>
+    end
 end
-
 if isempty(allFiles)
     files = allFiles;
     return;
 end
 
+primaryDir = searchDirs{1};
 byMouse = containers.Map('KeyType', 'char', 'ValueType', 'any');
 for k = 1:numel(allFiles)
     mouseId = extractMouseIdFromResultFile(allFiles(k).name);
@@ -28,7 +31,17 @@ for k = 1:numel(allFiles)
     end
     if ~isKey(byMouse, mouseId)
         byMouse(mouseId) = allFiles(k);
-    elseif startsWith(allFiles(k).name, 'stabilityCentralities_')
+        continue;
+    end
+    prev = byMouse(mouseId);
+    preferNew = false;
+    if strcmp(allFiles(k).folder, primaryDir) && ~strcmp(prev.folder, primaryDir)
+        preferNew = true;
+    elseif startsWith(allFiles(k).name, 'stabilityCentralities_') && ...
+            ~startsWith(prev.name, 'stabilityCentralities_')
+        preferNew = true;
+    end
+    if preferNew
         byMouse(mouseId) = allFiles(k);
     end
 end

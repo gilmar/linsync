@@ -816,10 +816,15 @@ to read them.
 ## 12. Output artefact schema
 
 A complete `runMouseExperiment` run produces the following files under
-`results/<experiment.name>_<yyyy-mm-dd_HHMM>/`. All filenames are
-parameterised by the `<scheme>` (`column`, `parkes`, `tvb`, or `none`).
+`results/<experiment.name>_<yyyy-mm-dd_HHMM>/`, grouped into category
+subfolders (`provenance/`, `stability_centralities/`, `anderson_vs_arnold/`,
+`lr_asymmetry/`, `centrality_correlation/`, `dst_cohort/`, `qc/`,
+`comparison_figures/`). Paths below are relative to that experiment root.
+Loaders also accept the legacy flat layout (same filenames in the root).
+All filenames are parameterised by the `<scheme>` (`column`, `parkes`, `tvb`,
+or `none`).
 
-### 12.1 Provenance (always)
+### 12.1 Provenance (`provenance/`)
 
 | File                            | Contents                                              |
 |---------------------------------|-------------------------------------------------------|
@@ -829,7 +834,7 @@ parameterised by the `<scheme>` (`column`, `parkes`, `tvb`, or `none`).
 | `run_manifest.mat`                    | `{ manifest, cfg, runParams }`                        |
 | `reports_<run>.log`                   | `reportTopNodes` + `reportAndersonOutliers` console   |
 
-### 12.2 Per-mouse stability centralities (×5–6)
+### 12.2 Per-mouse stability centralities (`stability_centralities/`, ×5–6)
 
 For each mouse `<mouseId>`:
 
@@ -868,7 +873,7 @@ Overview heatmap panel counts:
 - `column`: 2 panels — \(D(\to i)\) and \(D(k\to)\)
 - `tvb` / `none`: 3 panels — \(x_{0,i}^{c}\), \(D(\to i)\), \(D(k\to)\)
 
-### 12.4 Centrality correlations
+### 12.4 Centrality correlations (`centrality_correlation/`)
 
 | File                                                       | Contents                                                                          |
 |------------------------------------------------------------|-----------------------------------------------------------------------------------|
@@ -877,7 +882,7 @@ Overview heatmap panel counts:
 | `centrality_corr_bars_<scheme>.{fig,png}`                  | Bar chart of `corr(D(→i), <classical>)` and `corr(D(k→), <classical>)`            |
 | `centrality_corr_<scheme>.mat`                             | Packed summary: `corrAll`, `meanCorr`, `sdCorr`, ordering, labels, `runParameters` |
 
-### 12.5 Anderson vs Arnold
+### 12.5 Anderson vs Arnold (`anderson_vs_arnold/`)
 
 | File                                                                       | Contents                                                                  |
 |----------------------------------------------------------------------------|---------------------------------------------------------------------------|
@@ -887,7 +892,7 @@ Overview heatmap panel counts:
 | `compare_anderson_vs_arnold_<andersonMouse>_<scheme>_outliers.csv` (optional) | Bonferroni-flagged outlier rows                                            |
 | `compare_anderson_vs_arnold_<scheme>.mat`                                  | Cohort matrices, mean/SD, per-mouse z/p tables, `runParameters`           |
 
-### 12.6 Left–right asymmetry
+### 12.6 Left–right asymmetry (`lr_asymmetry/`)
 
 | File                                                                       | Contents                                                                  |
 |----------------------------------------------------------------------------|---------------------------------------------------------------------------|
@@ -897,7 +902,7 @@ Overview heatmap panel counts:
 | `LR_asymmetry_systematic_<scheme>.{csv,fig,png}`                           | Cohort-wide mean \(\mathrm{LI}_{\mathrm{norm}}\), sign-rank vs zero       |
 | `LR_asymmetry_<scheme>.mat`                                               | Full packed summary + `runParameters`                                     |
 
-### 12.7 \(D_{\mathrm{st}}\) cohort
+### 12.7 \(D_{\mathrm{st}}\) cohort (`dst_cohort/`)
 
 | File                                                       | Contents                                                                          |
 |------------------------------------------------------------|-----------------------------------------------------------------------------------|

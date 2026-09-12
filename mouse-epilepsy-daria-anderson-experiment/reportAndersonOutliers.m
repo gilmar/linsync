@@ -37,18 +37,27 @@ end
 
 resultsDir = resolveMouseResultsDir(opts.ResultsDir);
 
-% Discover Anderson outlier CSVs for this scheme
-pattern = fullfile(resultsDir, sprintf('compare_anderson_vs_arnold_Anderson_*_%s_outliers.csv', normStr));
-files = dir(pattern);
-if isempty(files)
+% Discover Anderson outlier CSVs for this scheme (subfolder or legacy flat root)
+pattern = sprintf('compare_anderson_vs_arnold_Anderson_*_%s_outliers.csv', normStr);
+filePaths = {};
+searchDirs = mouseResultsSearchDirs(resultsDir, 'anderson_vs_arnold');
+for d = 1:numel(searchDirs)
+    found = dir(fullfile(searchDirs{d}, pattern));
+    for k = 1:numel(found)
+        filePaths{end+1, 1} = fullfile(found(k).folder, found(k).name); %#ok<AGROW>
+    end
+end
+if isempty(filePaths)
     error('reportAndersonOutliers: no outlier CSVs found matching:\n  %s\nRun compareAndersonVsArnold first.', pattern);
 end
-files = sort({files.name});   % alphabetical = Anderson_1, Anderson_2, ...
+[filePaths, ord] = sort(filePaths);
+filePaths = filePaths(ord);
 
 % Extract mouse IDs
-mouseIds = cell(numel(files), 1);
-for f = 1:numel(files)
-    tok = regexp(files{f}, 'compare_anderson_vs_arnold_(Anderson_\w+)_', 'tokens', 'once');
+mouseIds = cell(numel(filePaths), 1);
+for f = 1:numel(filePaths)
+    [~, fname] = fileparts(filePaths{f});
+    tok = regexp(fname, 'compare_anderson_vs_arnold_(Anderson_\w+)_', 'tokens', 'once');
     mouseIds{f} = tok{1};
 end
 
@@ -61,9 +70,9 @@ fprintf('%s\n', repmat('=', 1, sepLen));
 % Per-mouse tables; also accumulate region->mice map for shared summary
 sharedMap = containers.Map('KeyType', 'char', 'ValueType', 'any');
 
-for f = 1:numel(files)
+for f = 1:numel(filePaths)
     mouseId = mouseIds{f};
-    T = readtable(fullfile(resultsDir, files{f}), 'TextType', 'string');
+    T = readtable(filePaths{f}, 'TextType', 'string');
 
     % Filter and sort by |z|
     absZ   = abs(T.(zCol));
